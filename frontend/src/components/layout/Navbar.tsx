@@ -32,20 +32,17 @@ const Navbar: React.FC = () => {
     <nav className="bg-white shadow-md z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Logo and main nav links */}
           <div className="flex">
           <div className="flex-shrink-0 flex items-center">
           <Link to="/" className="flex items-center">
           <img
               src="./bbr_black.png"
               alt="Logo"
-              className="h-7 w-auto"
+              className="h-15 w-20"
             />
     <span className="ml-2 text-xl font-bold text-gray-900">CNT</span>
   </Link>
 </div>
-            
-            {/* Desktop navigation */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link to="/" className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 border-b-2 border-transparent hover:border-blue-500">
                 Home

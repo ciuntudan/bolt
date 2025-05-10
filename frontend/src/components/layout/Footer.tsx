@@ -10,7 +10,11 @@ const Footer: React.FC = () => {
           {/* Brand */}
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center">
-              <Dumbbell size={24} className="text-blue-400" />
+            <img
+              src="./bbr_black.png"
+              alt="Logo"
+              className="h-22 w-16"
+            />
               <span className="ml-2 text-xl font-bold">CNT</span>
             </Link>
             <p className="mt-4 text-sm text-gray-300">
@@ -32,7 +36,6 @@ const Footer: React.FC = () => {
             </div>
           </div>
           
-          {/* Links */}
           <div className="col-span-1">
             <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Platform</h3>
             <ul className="mt-4 space-y-2">
