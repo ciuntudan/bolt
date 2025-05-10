@@ -16,12 +16,12 @@ const DAILY_MEALS = [
         title: 'High Protein Oatmeal',
         description: 'Rolled oats with protein powder, berries, and nuts',
         ingredients: [
-          { name: 'Rolled oats', amount: '1/2 cup', calories: 150, protein: 5 },
+          { name: 'Rolled oats', amount: '50 g', calories: 150, protein: 5 },
           { name: 'Whey protein', amount: '1 scoop', calories: 120, protein: 24 },
-          { name: 'Mixed berries', amount: '1/2 cup', calories: 40, protein: 0.5 },
-          { name: 'Almonds', amount: '1 tbsp', calories: 60, protein: 2 },
-          { name: 'Cinnamon', amount: '1/4 tsp', calories: 0, protein: 0 },
-          { name: 'Almond milk', amount: '1/2 cup', calories: 15, protein: 0.5 }
+          { name: 'Mixed berries', amount: '50 g', calories: 40, protein: 0.5 },
+          { name: 'Almonds', amount: '30 g', calories: 60, protein: 2 },
+          { name: 'Cinnamon', amount: '5 g', calories: 0, protein: 0 },
+          { name: 'Almond milk', amount: '100 ml', calories: 15, protein: 0.5 }
         ],
         nutrition: {
           calories: 385,
@@ -37,9 +37,9 @@ const DAILY_MEALS = [
         title: 'Greek Yogurt Parfait',
         description: 'Greek yogurt with honey and granola',
         ingredients: [
-          { name: 'Greek yogurt', amount: '1 cup', calories: 130, protein: 22 },
-          { name: 'Honey', amount: '1 tbsp', calories: 64, protein: 0 },
-          { name: 'Granola', amount: '1/4 cup', calories: 120, protein: 3 }
+          { name: 'Greek yogurt', amount: '100 g', calories: 130, protein: 22 },
+          { name: 'Honey', amount: '20 g', calories: 64, protein: 0 },
+          { name: 'Granola', amount: '30 g', calories: 120, protein: 3 }
         ],
         nutrition: {
           calories: 314,
@@ -55,12 +55,12 @@ const DAILY_MEALS = [
         title: 'Grilled Chicken Salad',
         description: 'Grilled chicken breast with mixed greens and vinaigrette',
         ingredients: [
-          { name: 'Chicken breast', amount: '6 oz', calories: 180, protein: 36 },
-          { name: 'Mixed greens', amount: '2 cups', calories: 15, protein: 1 },
-          { name: 'Cherry tomatoes', amount: '1/2 cup', calories: 20, protein: 1 },
-          { name: 'Cucumber', amount: '1/2 cup', calories: 8, protein: 0.5 },
-          { name: 'Olive oil', amount: '1 tbsp', calories: 120, protein: 0 },
-          { name: 'Balsamic vinegar', amount: '1 tbsp', calories: 14, protein: 0 }
+          { name: 'Chicken breast', amount: '80g', calories: 180, protein: 36 },
+          { name: 'Mixed greens', amount: '30 g', calories: 15, protein: 1 },
+          { name: 'Cherry tomatoes', amount: '50 g', calories: 20, protein: 1 },
+          { name: 'Cucumber', amount: '50 g', calories: 8, protein: 0.5 },
+          { name: 'Olive oil', amount: '20 ml', calories: 120, protein: 0 },
+          { name: 'Balsamic vinegar', amount: '10 ml', calories: 14, protein: 0 }
         ],
         nutrition: {
           calories: 357,
@@ -78,7 +78,7 @@ const DAILY_MEALS = [
         ingredients: [
           { name: 'Whey protein', amount: '1 scoop', calories: 120, protein: 24 },
           { name: 'Banana', amount: '1 medium', calories: 105, protein: 1.3 },
-          { name: 'Water', amount: '1 cup', calories: 0, protein: 0 }
+          { name: 'Water', amount: '200 ml', calories: 0, protein: 0 }
         ],
         nutrition: {
           calories: 225,
@@ -94,12 +94,12 @@ const DAILY_MEALS = [
         title: 'Salmon with Quinoa and Veggies',
         description: 'Baked salmon with quinoa and roasted vegetables',
         ingredients: [
-          { name: 'Salmon fillet', amount: '6 oz', calories: 250, protein: 36 },
-          { name: 'Quinoa', amount: '1/2 cup cooked', calories: 110, protein: 4 },
-          { name: 'Brussels sprouts', amount: '1 cup', calories: 60, protein: 4 },
-          { name: 'Bell pepper', amount: '1/2 cup', calories: 25, protein: 1 },
-          { name: 'Olive oil', amount: '1 tbsp', calories: 120, protein: 0 },
-          { name: 'Lemon juice', amount: '1 tbsp', calories: 4, protein: 0 }
+          { name: 'Salmon fillet', amount: '100 g', calories: 250, protein: 36 },
+          { name: 'Quinoa', amount: '50 g', calories: 110, protein: 4 },
+          { name: 'Brussels sprouts', amount: '30 g', calories: 60, protein: 4 },
+          { name: 'Bell pepper', amount: '30 g', calories: 25, protein: 1 },
+          { name: 'Olive oil', amount: '30 ml', calories: 120, protein: 0 },
+          { name: 'Lemon juice', amount: '10 ml', calories: 4, protein: 0 }
         ],
         nutrition: {
           calories: 569,
@@ -126,10 +126,10 @@ const DAILY_MEALS = [
         title: 'Spinach and Egg White Omelet',
         description: 'Egg white omelet with spinach, feta cheese, and whole grain toast',
         ingredients: [
-          { name: 'Egg whites', amount: '1 cup', calories: 125, protein: 26 },
-          { name: 'Spinach', amount: '1 cup', calories: 7, protein: 0.9 },
-          { name: 'Feta cheese', amount: '1 oz', calories: 74, protein: 4 },
-          { name: 'Whole grain toast', amount: '1 slice', calories: 80, protein: 4 },
+          { name: 'Egg whites', amount: '30 g', calories: 125, protein: 26 },
+          { name: 'Spinach', amount: '30 g', calories: 7, protein: 0.9 },
+          { name: 'Feta cheese', amount: '70 g', calories: 74, protein: 4 },
+          { name: 'Whole grain toast', amount: '25 g', calories: 80, protein: 4 },
           { name: 'Olive oil spray', amount: '1 spray', calories: 5, protein: 0 }
         ],
         nutrition: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Dumbbell, Github, Twitter, Instagram, Mail } from 'lucide-react';
+import { Github, Twitter, Instagram, Mail } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (

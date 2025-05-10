@@ -191,7 +191,7 @@ const ProgressPage: React.FC = () => {
               <div className="ml-4">
                 <h2 className="text-sm font-medium text-gray-500">Weight Change</h2>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold text-gray-900">-11 lbs</p>
+                  <p className="text-2xl font-bold text-gray-900">-2 kg</p>
                   <span className="ml-2 text-green-500 text-sm">-5.9%</span>
                 </div>
                 <p className="text-xs text-gray-500">Since program start</p>
@@ -364,7 +364,7 @@ const ProgressPage: React.FC = () => {
                     <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-500">Current Weight</p>
-                        <p className="font-medium text-gray-900">174 lbs</p>
+                        <p className="font-medium text-gray-900">88 kg</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Body Fat %</p>
@@ -372,7 +372,7 @@ const ProgressPage: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Muscle Mass</p>
-                        <p className="font-medium text-gray-900">143 lbs</p>
+                        <p className="font-medium text-gray-900">60 kg</p>
                       </div>
                     </div>
                   </div>
@@ -428,18 +428,18 @@ const ProgressPage: React.FC = () => {
                     <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-500">Bench Press</p>
-                        <p className="font-medium text-gray-900">215 lbs</p>
-                        <p className="text-xs text-green-500">+30 lbs</p>
+                        <p className="font-medium text-gray-900">90 kg</p>
+                        <p className="text-xs text-green-500">+10 kg</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Squat</p>
-                        <p className="font-medium text-gray-900">285 lbs</p>
-                        <p className="text-xs text-green-500">+60 lbs</p>
+                        <p className="font-medium text-gray-900">120 kg</p>
+                        <p className="text-xs text-green-500">+20 kg</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Deadlift</p>
-                        <p className="font-medium text-gray-900">325 lbs</p>
-                        <p className="text-xs text-green-500">+50 lbs</p>
+                        <p className="font-medium text-gray-900">160 kg</p>
+                        <p className="text-xs text-green-500">+25 kg</p>
                       </div>
                     </div>
                   </div>
@@ -590,7 +590,7 @@ const ProgressPage: React.FC = () => {
               
               <div className="space-y-4">
                 <p className="text-white text-opacity-90">
-                  Your weight loss is consistent and healthy, averaging 1.5 lbs per week. This indicates an appropriate caloric deficit without sacrificing muscle.
+                  Your weight loss is consistent and healthy, averaging 1 kg per week. This indicates an appropriate caloric deficit without sacrificing muscle.
                 </p>
                 
                 <p className="text-white text-opacity-90">
@@ -624,7 +624,7 @@ const ProgressPage: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Current Weight</span>
-                    <span className="text-sm font-medium text-blue-600">174 lbs</span>
+                    <span className="text-sm font-medium text-blue-600">88 kg</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '65%' }}></div>
@@ -652,14 +652,14 @@ const ProgressPage: React.FC = () => {
                 <div>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Muscle Mass</span>
-                    <span className="text-sm font-medium text-purple-600">143 lbs</span>
+                    <span className="text-sm font-medium text-purple-600">90 kg</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: '60%' }}></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>Starting: 140 lbs</span>
-                    <span>Goal: 145 lbs</span>
+                    <span>Starting: 90 kg</span>
+                    <span>Goal: 85 kg</span>
                   </div>
                 </div>
               </div>
