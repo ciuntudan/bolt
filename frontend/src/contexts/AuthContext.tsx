@@ -1,11 +1,18 @@
+// Modified: frontend/src/contexts/AuthContext.tsx
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 // Define types
 type User = {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  avatar?: string;
+  first_name: string;
+  last_name: string;
+  profile: {
+    avatar: string | null;
+  };
 };
 
 type AuthContextType = {
@@ -13,18 +20,13 @@ type AuthContextType = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
   error: string | null;
 };
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Sample user data (simulating backend)
-const MOCK_USERS = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', password: 'password123', avatar: 'https://source.unsplash.com/random/100x100/?portrait' }
-];
 
 // Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,12 +35,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in (from localStorage)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Check if user is already logged in
+    const checkAuthStatus = async () => {
+      const storedUser = localStorage.getItem('user');
+      const accessToken = localStorage.getItem('access_token');
+      
+      if (storedUser && accessToken) {
+        try {
+          // Validate token by fetching current user
+          const userData = await authAPI.getCurrentUser();
+          setUser(userData);
+        } catch (err) {
+          // Token invalid, clear storage
+          localStorage.removeItem('user');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+      }
+      
+      setLoading(false);
+    };
+    
+    checkAuthStatus();
   }, []);
 
   // Login function
@@ -47,23 +65,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await authAPI.login(email, password);
       
-      // Check credentials against mock data
-      const foundUser = MOCK_USERS.find(u => u.email === email && u.password === password);
+      // Store tokens and user data
+      localStorage.setItem('access_token', response.access);
+      localStorage.setItem('refresh_token', response.refresh);
+      localStorage.setItem('user', JSON.stringify(response.user));
       
-      if (foundUser) {
-        // Strip password before storing
-        const { password, ...safeUser } = foundUser;
-        setUser(safeUser);
-        localStorage.setItem('user', JSON.stringify(safeUser));
-      } else {
-        throw new Error('Invalid email or password');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      throw err;
+      setUser(response.user);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'An error occurred during login';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -75,43 +88,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await authAPI.register(name, email, password);
       
-      // Check if email already exists
-      if (MOCK_USERS.some(u => u.email === email)) {
-        throw new Error('Email already in use');
+      // Store tokens and user data
+      localStorage.setItem('access_token', response.access);
+      localStorage.setItem('refresh_token', response.refresh);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      setUser(response.user);
+    } catch (err: any) {
+      const errorData = err.response?.data || {};
+      let errorMessage = 'Registration failed';
+      
+      // Process validation errors
+      if (typeof errorData === 'object') {
+        const errorMessages = Object.entries(errorData)
+          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+          .join('; ');
+        
+        if (errorMessages) {
+          errorMessage = errorMessages;
+        }
       }
       
-      // Create new user
-      const newUser = {
-        id: String(MOCK_USERS.length + 1),
-        name,
-        email,
-        password,
-        avatar: `https://source.unsplash.com/random/100x100/?portrait&${Math.random()}`
-      };
-      
-      // In a real app, we would send this to the backend
-      // For the mock, we'll just add it to our array
-      MOCK_USERS.push(newUser);
-      
-      // Auto login after register
-      const { password: _, ...safeUser } = newUser;
-      setUser(safeUser);
-      localStorage.setItem('user', JSON.stringify(safeUser));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      throw err;
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
