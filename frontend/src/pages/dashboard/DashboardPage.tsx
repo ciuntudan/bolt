@@ -13,14 +13,14 @@ import {
 
 // Sample progress data
 const progressData = [
-  { name: 'Week 1', weight: 185, strength: 65 },
-  { name: 'Week 2', weight: 183, strength: 68 },
-  { name: 'Week 3', weight: 181, strength: 72 },
-  { name: 'Week 4', weight: 179, strength: 75 },
-  { name: 'Week 5', weight: 178, strength: 78 },
-  { name: 'Week 6', weight: 176, strength: 82 },
-  { name: 'Week 7', weight: 174, strength: 85 },
-  { name: 'Week 8', weight: 173, strength: 88 },
+  { name: 'Week 1', weight: 77, strength: 65 },
+  { name: 'Week 2', weight: 79, strength: 68 },
+  { name: 'Week 3', weight: 81, strength: 72 },
+  { name: 'Week 4', weight: 82, strength: 75 },
+  { name: 'Week 5', weight: 84, strength: 78 },
+  { name: 'Week 6', weight: 86, strength: 82 },
+  { name: 'Week 7', weight: 87, strength: 85 },
+  { name: 'Week 8', weight: 88, strength: 88 },
 ];
 
 // Sample nutrition data
@@ -375,7 +375,7 @@ const DashboardPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Weight Goal: 165 lbs</span>
+                    <span className="text-sm font-medium text-gray-700">Weight Goal: 90 kgs</span>
                     <span className="text-sm font-medium text-blue-600">53% complete</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">

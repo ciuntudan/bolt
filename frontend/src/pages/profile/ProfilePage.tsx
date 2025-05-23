@@ -17,11 +17,11 @@ const ProfilePage: React.FC = () => {
   
   // Sample user data (would come from context in real app)
   const userData = {
-    name: user?.name || 'John Doe',
-    email: user?.email || 'john@example.com',
-    age: 32,
-    height: '5\'10"',
-    weight: 174,
+    name: user?.name || 'Ciuntu Daniel',
+    email: user?.email || 'dan.ciuntug7@gmail.com',
+    age: 22,
+    height: '185cm',
+    weight: 92,
     gender: 'Male',
     goals: ['Weight loss', 'Muscle gain', 'Improved strength'],
     fitnessLevel: 'Intermediate',
@@ -33,7 +33,7 @@ const ProfilePage: React.FC = () => {
     workoutDuration: '45-60 minutes',
     sleepAverage: '7 hours',
     stressLevel: 'Moderate',
-    profession: 'Software Engineer',
+    profession: 'Student',
     dateJoined: 'May 15, 2025'
   };
   
@@ -56,7 +56,7 @@ const ProfilePage: React.FC = () => {
               <div className="p-6 text-center border-b border-gray-200">
                 <div className="relative mx-auto h-24 w-24 rounded-full overflow-hidden bg-gray-100 mb-4 border-2 border-blue-500">
                   <img
-                    src={user?.avatar || "https://source.unsplash.com/random/100x100/?portrait"}
+                    src={user?.avatar || "frontend/bbr_black.png"}
                     alt={userData.name}
                     className="h-full w-full object-cover"
                   />
@@ -242,7 +242,7 @@ const ProfilePage: React.FC = () => {
                       
                       <div>
                         <label htmlFor="weight" className="block text-sm font-medium text-gray-700">
-                          Weight (lbs)
+                          Weight (kgs)
                         </label>
                         <input
                           type="number"
@@ -528,9 +528,9 @@ const ProfilePage: React.FC = () => {
                                   <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '55%' }}></div>
                                 </div>
                                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                  <span>185 lbs</span>
-                                  <span>Current: 174 lbs</span>
-                                  <span>Goal: 165 lbs</span>
+                                  <span>88 kgs</span>
+                                  <span>Current: 92 kgs</span>
+                                  <span>Goal: 88kgs</span>
                                 </div>
                               </div>
                             </motion.div>
@@ -561,39 +561,39 @@ const ProfilePage: React.FC = () => {
                               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
                                   <label htmlFor="benchPress" className="block text-xs font-medium text-gray-700">
-                                    Bench Press (lbs)
+                                    Bench Press (kgs)
                                   </label>
                                   <input
                                     type="number"
                                     name="benchPress"
                                     id="benchPress"
-                                    defaultValue="225"
+                                    defaultValue="100"
                                     className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                   />
                                 </div>
                                 
                                 <div>
                                   <label htmlFor="squat" className="block text-xs font-medium text-gray-700">
-                                    Squat (lbs)
+                                    Squat (kgs)
                                   </label>
                                   <input
                                     type="number"
                                     name="squat"
                                     id="squat"
-                                    defaultValue="315"
+                                    defaultValue="150"
                                     className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                   />
                                 </div>
                                 
                                 <div>
                                   <label htmlFor="deadlift" className="block text-xs font-medium text-gray-700">
-                                    Deadlift (lbs)
+                                    Deadlift (kgs)
                                   </label>
                                   <input
                                     type="number"
                                     name="deadlift"
                                     id="deadlift"
-                                    defaultValue="365"
+                                    defaultValue="150"
                                     className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                   />
                                 </div>
@@ -615,7 +615,7 @@ const ProfilePage: React.FC = () => {
                               <div>
                                 <div className="flex justify-between mb-1">
                                   <span className="text-xs font-medium text-gray-700">Bench Press Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">215/225 lbs (96%)</span>
+                                  <span className="text-xs font-medium text-blue-600">96/100 kgs (96%)</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '96%' }}></div>
@@ -625,7 +625,7 @@ const ProfilePage: React.FC = () => {
                               <div>
                                 <div className="flex justify-between mb-1">
                                   <span className="text-xs font-medium text-gray-700">Squat Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">285/315 lbs (90%)</span>
+                                  <span className="text-xs font-medium text-blue-600">120/150 kgs (90%)</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '90%' }}></div>
@@ -635,7 +635,7 @@ const ProfilePage: React.FC = () => {
                               <div>
                                 <div className="flex justify-between mb-1">
                                   <span className="text-xs font-medium text-gray-700">Deadlift Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">325/365 lbs (89%)</span>
+                                  <span className="text-xs font-medium text-blue-600">150/170 kgs (89%)</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '89%' }}></div>
@@ -710,7 +710,7 @@ const ProfilePage: React.FC = () => {
                               
                               <div>
                                 <label htmlFor="targetMuscleMass" className="block text-xs font-medium text-gray-700">
-                                  Target Muscle Mass (lbs)
+                                  Target Muscle Mass (kgs)
                                 </label>
                                 <input
                                   type="number"
