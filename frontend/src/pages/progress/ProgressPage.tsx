@@ -11,13 +11,13 @@ import {
 
 // Sample progress data
 const bodyMetricsData = [
-  { date: '2025-05-01', weight: 185, bodyFat: 22, muscleMass: 140 },
-  { date: '2025-05-08', weight: 183, bodyFat: 21.5, muscleMass: 140.5 },
-  { date: '2025-05-15', weight: 181, bodyFat: 21, muscleMass: 141 },
-  { date: '2025-05-22', weight: 179, bodyFat: 20.5, muscleMass: 141.5 },
-  { date: '2025-05-29', weight: 178, bodyFat: 20, muscleMass: 142 },
-  { date: '2025-06-05', weight: 176, bodyFat: 19.5, muscleMass: 142.5 },
-  { date: '2025-06-12', weight: 174, bodyFat: 19, muscleMass: 143 }
+  { date: '2025-05-01', weight: 92, bodyFat: 22, muscleMass: 40 },
+  { date: '2025-05-08', weight: 92, bodyFat: 21.5, muscleMass: 40.5 },
+  { date: '2025-05-15', weight: 91, bodyFat: 21, muscleMass: 41 },
+  { date: '2025-05-22', weight: 91, bodyFat: 20.5, muscleMass: 41.5 },
+  { date: '2025-05-29', weight: 90, bodyFat: 20, muscleMass: 42 },
+  { date: '2025-06-05', weight: 89, bodyFat: 19.5, muscleMass: 42.5 },
+  { date: '2025-06-12', weight: 89, bodyFat: 19, muscleMass: 43 }
 ];
 
 const strengthMetricsData = [
@@ -54,7 +54,7 @@ const recentAchievements = [
   {
     id: 1,
     title: 'Strength Milestone',
-    description: 'Reached 215 lbs on bench press',
+    description: 'Reached 215 kgs on bench press',
     date: '2025-06-12',
     icon: 'dumbbell',
     color: 'blue'
@@ -62,7 +62,7 @@ const recentAchievements = [
   {
     id: 2,
     title: 'Weight Goal Achievement',
-    description: 'Dropped below 175 lbs',
+    description: 'Dropped below 175 kgs',
     date: '2025-06-10',
     icon: 'scale',
     color: 'green'
@@ -91,18 +91,18 @@ const chartConfig = {
     title: 'Body Composition',
     description: 'Track changes in weight, body fat percentage, and muscle mass over time.',
     metrics: [
-      { key: 'weight', name: 'Weight (lbs)', color: '#3B82F6' },
+      { key: 'weight', name: 'Weight (kgs)', color: '#3B82F6' },
       { key: 'bodyFat', name: 'Body Fat %', color: '#F97316' },
-      { key: 'muscleMass', name: 'Muscle Mass (lbs)', color: '#10B981' }
+      { key: 'muscleMass', name: 'Muscle Mass (kgs)', color: '#10B981' }
     ]
   },
   strengthMetrics: {
     title: 'Strength Progression',
     description: 'Monitor your progress on key compound lifts over time.',
     metrics: [
-      { key: 'bench', name: 'Bench Press (lbs)', color: '#8B5CF6' },
-      { key: 'squat', name: 'Squat (lbs)', color: '#EC4899' },
-      { key: 'deadlift', name: 'Deadlift (lbs)', color: '#F59E0B' }
+      { key: 'bench', name: 'Bench Press (kgs)', color: '#8B5CF6' },
+      { key: 'squat', name: 'Squat (kgs)', color: '#EC4899' },
+      { key: 'deadlift', name: 'Deadlift (kgs)', color: '#F59E0B' }
     ]
   }
 };
@@ -338,7 +338,7 @@ const ProgressPage: React.FC = () => {
                           <Tooltip 
                             formatter={(value, name) => [
                               value, 
-                              name === 'Weight (lbs)' || name === 'Muscle Mass (lbs)' 
+                              name === 'Weight (kgs)' || name === 'Muscle Mass (kgs)' 
                                 ? `${name}` 
                                 : name
                             ]}
@@ -405,7 +405,7 @@ const ProgressPage: React.FC = () => {
                           />
                           <YAxis />
                           <Tooltip 
-                            formatter={(value, name) => [`${value} lbs`, name]}
+                            formatter={(value, name) => [`${value} kgs`, name]}
                             labelFormatter={(date) => {
                               return new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                             }}
@@ -630,8 +630,8 @@ const ProgressPage: React.FC = () => {
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '65%' }}></div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>Starting: 185 lbs</span>
-                    <span>Goal: 165 lbs</span>
+                    <span>Starting: 185 kgs</span>
+                    <span>Goal: 165 kgs</span>
                   </div>
                 </div>
                 
@@ -716,7 +716,7 @@ const ProgressPage: React.FC = () => {
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '55%' }}></div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Goal: Lose 20 lbs (11/20 lbs lost)
+                    Goal: Lose 20 kgs (11/20 kgs lost)
                   </p>
                 </div>
                 
@@ -729,7 +729,7 @@ const ProgressPage: React.FC = () => {
                     <div className="bg-green-600 h-2.5 rounded-full" style={{ width: '72%' }}></div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Goal: 225 lbs (215/225 lbs)
+                    Goal: 225 kgs (215/225 kgs)
                   </p>
                 </div>
                 

@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
                 <input
                   id="email"
                   name="email"
-                  type="text"
+                  type="email"
                   autoComplete="email"
                   required
                   value={email}

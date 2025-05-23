@@ -84,7 +84,7 @@ const Navbar: React.FC = () => {
                   <div className="flex items-center">
                     <img
                       className="h-8 w-8 rounded-full object-cover"
-                      src={user?.avatar || "https://source.unsplash.com/random/100x100/?portrait"}
+                      src={user?.avatar || "./bbr_black.png"}
                       alt={user?.name || "User"}
                     />
                     <span className="ml-2 text-gray-700">{user?.name}</span>

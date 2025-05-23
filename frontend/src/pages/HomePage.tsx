@@ -221,7 +221,7 @@ const HomePage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-gray-900">Sarah K.</h3>
-                    <p className="text-sm text-gray-500">Lost 15 lbs in 3 months</p>
+                    <p className="text-sm text-gray-500">Lost 15 kgs in 3 months</p>
                   </div>
                 </div>
                 <p className="text-gray-600 italic">
@@ -246,7 +246,7 @@ const HomePage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-gray-900">Michael T.</h3>
-                    <p className="text-sm text-gray-500">Gained 10 lbs of muscle</p>
+                    <p className="text-sm text-gray-500">Gained 10 kgs of muscle</p>
                   </div>
                 </div>
                 <p className="text-gray-600 italic">

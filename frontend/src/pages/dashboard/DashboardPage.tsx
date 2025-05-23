@@ -38,11 +38,11 @@ const nutritionData = [
 const todayWorkout = {
   title: 'Upper Body Strength',
   exercises: [
-    { name: 'Bench Press', sets: 4, reps: '8-10', weight: '135 lbs' },
-    { name: 'Incline Dumbbell Press', sets: 3, reps: '10-12', weight: '40 lbs' },
-    { name: 'Lat Pulldowns', sets: 4, reps: '10-12', weight: '120 lbs' },
-    { name: 'Seated Cable Rows', sets: 3, reps: '10-12', weight: '140 lbs' },
-    { name: 'Shoulder Press', sets: 3, reps: '10-12', weight: '35 lbs' }
+    { name: 'Bench Press', sets: 4, reps: '8-10', weight: '135 kgs' },
+    { name: 'Incline Dumbbell Press', sets: 3, reps: '10-12', weight: '40 kgs' },
+    { name: 'Lat Pulldowns', sets: 4, reps: '10-12', weight: '120 kgs' },
+    { name: 'Seated Cable Rows', sets: 3, reps: '10-12', weight: '140 kgs' },
+    { name: 'Shoulder Press', sets: 3, reps: '10-12', weight: '35 kgs' }
   ],
   duration: '45-60 min'
 };
@@ -134,7 +134,7 @@ const DashboardPage: React.FC = () => {
               <div className="ml-4">
                 <h2 className="text-sm font-medium text-gray-500">Current Weight</h2>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold text-gray-900">173 lbs</p>
+                  <p className="text-2xl font-bold text-gray-900">90 kgs</p>
                   <span className="flex items-center ml-2 text-green-500 text-sm">
                     <ArrowDown size={16} />
                     2.3%
@@ -236,7 +236,7 @@ const DashboardPage: React.FC = () => {
                       yAxisId="left"
                       type="monotone"
                       dataKey="weight"
-                      name="Weight (lbs)"
+                      name="Weight (kgs)"
                       stroke="#3B82F6"
                       fill="#93C5FD"
                       activeDot={{ r: 8 }}

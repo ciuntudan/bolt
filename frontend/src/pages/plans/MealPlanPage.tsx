@@ -488,7 +488,7 @@ const MealPlanPage: React.FC = () => {
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label htmlFor="check-chicken" className="ml-2 block text-sm text-gray-900">
-                      Chicken breast (2 lbs)
+                      Chicken breast (200 g)
                     </label>
                   </div>
                   <span className="text-gray-500 text-xs">$12.99</span>

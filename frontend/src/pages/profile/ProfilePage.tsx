@@ -56,7 +56,7 @@ const ProfilePage: React.FC = () => {
               <div className="p-6 text-center border-b border-gray-200">
                 <div className="relative mx-auto h-24 w-24 rounded-full overflow-hidden bg-gray-100 mb-4 border-2 border-blue-500">
                   <img
-                    src={user?.avatar || "frontend/bbr_black.png"}
+                    src={user?.avatar || "./bbr_black.png"}
                     alt={userData.name}
                     className="h-full w-full object-cover"
                   />
@@ -486,7 +486,7 @@ const ProfilePage: React.FC = () => {
                             >
                               <div>
                                 <label htmlFor="currentWeight" className="block text-xs font-medium text-gray-700">
-                                  Current Weight (lbs)
+                                  Current Weight (kgs)
                                 </label>
                                 <input
                                   type="number"
@@ -499,7 +499,7 @@ const ProfilePage: React.FC = () => {
                               
                               <div>
                                 <label htmlFor="targetWeight" className="block text-xs font-medium text-gray-700">
-                                  Target Weight (lbs)
+                                  Target Weight (kgs)
                                 </label>
                                 <input
                                   type="number"
@@ -696,7 +696,7 @@ const ProfilePage: React.FC = () => {
                               
                               <div>
                                 <label htmlFor="currentMuscleMass" className="block text-xs font-medium text-gray-700">
-                                  Current Muscle Mass (lbs)
+                                  Current Muscle Mass (kgs)
                                 </label>
                                 <input
                                   type="number"

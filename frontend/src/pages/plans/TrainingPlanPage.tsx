@@ -17,11 +17,11 @@ const workoutPlans = [
         title: 'Upper Body Strength',
         completed: true,
         exercises: [
-          { name: 'Bench Press', sets: 3, reps: '8-10', weight: '135 lbs' },
-          { name: 'Incline Dumbbell Press', sets: 3, reps: '10-12', weight: '35 lbs' },
-          { name: 'Lat Pulldowns', sets: 3, reps: '10-12', weight: '120 lbs' },
-          { name: 'Seated Cable Rows', sets: 3, reps: '10-12', weight: '140 lbs' },
-          { name: 'Shoulder Press', sets: 3, reps: '10-12', weight: '30 lbs' }
+          { name: 'Bench Press', sets: 3, reps: '8-10', weight: '135 kgs' },
+          { name: 'Incline Dumbbell Press', sets: 3, reps: '10-12', weight: '35 kgs' },
+          { name: 'Lat Pulldowns', sets: 3, reps: '10-12', weight: '120 kgs' },
+          { name: 'Seated Cable Rows', sets: 3, reps: '10-12', weight: '140 kgs' },
+          { name: 'Shoulder Press', sets: 3, reps: '10-12', weight: '30 kgs' }
         ],
         duration: '45 min'
       },
@@ -31,11 +31,11 @@ const workoutPlans = [
         title: 'Lower Body Focus',
         completed: true,
         exercises: [
-          { name: 'Barbell Squats', sets: 3, reps: '8-10', weight: '185 lbs' },
-          { name: 'Romanian Deadlifts', sets: 3, reps: '10-12', weight: '165 lbs' },
-          { name: 'Leg Press', sets: 3, reps: '12-15', weight: '250 lbs' },
-          { name: 'Leg Extensions', sets: 3, reps: '12-15', weight: '70 lbs' },
-          { name: 'Standing Calf Raises', sets: 3, reps: '15-20', weight: '120 lbs' }
+          { name: 'Barbell Squats', sets: 3, reps: '8-10', weight: '185 kgs' },
+          { name: 'Romanian Deadlifts', sets: 3, reps: '10-12', weight: '165 kgs' },
+          { name: 'Leg Press', sets: 3, reps: '12-15', weight: '250 kgs' },
+          { name: 'Leg Extensions', sets: 3, reps: '12-15', weight: '70 kgs' },
+          { name: 'Standing Calf Raises', sets: 3, reps: '15-20', weight: '120 kgs' }
         ],
         duration: '50 min'
       },
@@ -57,11 +57,11 @@ const workoutPlans = [
         title: 'Push Workout',
         completed: false,
         exercises: [
-          { name: 'Incline Bench Press', sets: 3, reps: '8-10', weight: '145 lbs' },
-          { name: 'Dumbbell Shoulder Press', sets: 3, reps: '10-12', weight: '35 lbs' },
-          { name: 'Cable Chest Flyes', sets: 3, reps: '12-15', weight: '20 lbs' },
-          { name: 'Tricep Pushdowns', sets: 3, reps: '12-15', weight: '45 lbs' },
-          { name: 'Lateral Raises', sets: 3, reps: '12-15', weight: '15 lbs' }
+          { name: 'Incline Bench Press', sets: 3, reps: '8-10', weight: '145 kgs' },
+          { name: 'Dumbbell Shoulder Press', sets: 3, reps: '10-12', weight: '35 kgs' },
+          { name: 'Cable Chest Flyes', sets: 3, reps: '12-15', weight: '20 kgs' },
+          { name: 'Tricep Pushdowns', sets: 3, reps: '12-15', weight: '45 kgs' },
+          { name: 'Lateral Raises', sets: 3, reps: '12-15', weight: '15 kgs' }
         ],
         duration: '50 min'
       },
@@ -72,10 +72,10 @@ const workoutPlans = [
         completed: false,
         exercises: [
           { name: 'Pull-Ups', sets: 3, reps: '6-8', weight: 'Bodyweight' },
-          { name: 'Barbell Rows', sets: 3, reps: '8-10', weight: '135 lbs' },
-          { name: 'Face Pulls', sets: 3, reps: '12-15', weight: '45 lbs' },
-          { name: 'Hammer Curls', sets: 3, reps: '10-12', weight: '25 lbs' },
-          { name: 'Preacher Curls', sets: 3, reps: '10-12', weight: '60 lbs' }
+          { name: 'Barbell Rows', sets: 3, reps: '8-10', weight: '135 kgs' },
+          { name: 'Face Pulls', sets: 3, reps: '12-15', weight: '45 kgs' },
+          { name: 'Hammer Curls', sets: 3, reps: '10-12', weight: '25 kgs' },
+          { name: 'Preacher Curls', sets: 3, reps: '10-12', weight: '60 kgs' }
         ],
         duration: '45 min'
       },
@@ -85,11 +85,11 @@ const workoutPlans = [
         title: 'Leg Hypertrophy',
         completed: false,
         exercises: [
-          { name: 'Front Squats', sets: 3, reps: '8-10', weight: '145 lbs' },
-          { name: 'Walking Lunges', sets: 3, reps: '12 per leg', weight: '25 lbs' },
-          { name: 'Leg Curls', sets: 3, reps: '12-15', weight: '60 lbs' },
-          { name: 'Bulgarian Split Squats', sets: 3, reps: '10 per leg', weight: '30 lbs' },
-          { name: 'Seated Calf Raises', sets: 4, reps: '15-20', weight: '90 lbs' }
+          { name: 'Front Squats', sets: 3, reps: '8-10', weight: '145 kgs' },
+          { name: 'Walking Lunges', sets: 3, reps: '12 per leg', weight: '25 kgs' },
+          { name: 'Leg Curls', sets: 3, reps: '12-15', weight: '60 kgs' },
+          { name: 'Bulgarian Split Squats', sets: 3, reps: '10 per leg', weight: '30 kgs' },
+          { name: 'Seated Calf Raises', sets: 4, reps: '15-20', weight: '90 kgs' }
         ],
         duration: '55 min'
       },
@@ -113,11 +113,11 @@ const workoutPlans = [
         title: 'Upper Body Power',
         completed: false,
         exercises: [
-          { name: 'Bench Press', sets: 4, reps: '6-8', weight: '145 lbs' },
-          { name: 'Incline Dumbbell Press', sets: 3, reps: '8-10', weight: '40 lbs' },
-          { name: 'Lat Pulldowns', sets: 4, reps: '8-10', weight: '130 lbs' },
-          { name: 'Seated Cable Rows', sets: 3, reps: '8-10', weight: '150 lbs' },
-          { name: 'Shoulder Press', sets: 3, reps: '8-10', weight: '35 lbs' }
+          { name: 'Bench Press', sets: 4, reps: '6-8', weight: '145 kgs' },
+          { name: 'Incline Dumbbell Press', sets: 3, reps: '8-10', weight: '40 kgs' },
+          { name: 'Lat Pulldowns', sets: 4, reps: '8-10', weight: '130 kgs' },
+          { name: 'Seated Cable Rows', sets: 3, reps: '8-10', weight: '150 kgs' },
+          { name: 'Shoulder Press', sets: 3, reps: '8-10', weight: '35 kgs' }
         ],
         duration: '50 min'
       },
@@ -128,11 +128,11 @@ const workoutPlans = [
         title: 'Lower Body Power',
         completed: false,
         exercises: [
-          { name: 'Barbell Squats', sets: 4, reps: '6-8', weight: '195 lbs' },
-          { name: 'Romanian Deadlifts', sets: 4, reps: '8-10', weight: '175 lbs' },
-          { name: 'Leg Press', sets: 3, reps: '10-12', weight: '270 lbs' },
-          { name: 'Leg Extensions', sets: 3, reps: '10-12', weight: '80 lbs' },
-          { name: 'Standing Calf Raises', sets: 4, reps: '12-15', weight: '130 lbs' }
+          { name: 'Barbell Squats', sets: 4, reps: '6-8', weight: '195 kgs' },
+          { name: 'Romanian Deadlifts', sets: 4, reps: '8-10', weight: '175 kgs' },
+          { name: 'Leg Press', sets: 3, reps: '10-12', weight: '270 kgs' },
+          { name: 'Leg Extensions', sets: 3, reps: '10-12', weight: '80 kgs' },
+          { name: 'Standing Calf Raises', sets: 4, reps: '12-15', weight: '130 kgs' }
         ],
         duration: '55 min'
       }
@@ -480,7 +480,7 @@ const TrainingPlanPage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-gray-900">Weight Milestone</h3>
-                    <p className="text-xs text-gray-500">Bench pressed 150 lbs for the first time</p>
+                    <p className="text-xs text-gray-500">Bench pressed 150 kgs for the first time</p>
                   </div>
                 </div>
                 
@@ -519,7 +519,7 @@ const TrainingPlanPage: React.FC = () => {
               
               <div className="space-y-4">
                 <p className="text-white text-opacity-90">
-                  Based on your recent progress, you're ready to increase your bench press weight by 5-10 lbs next week.
+                  Based on your recent progress, you're ready to increase your bench press weight by 5-10 kgs next week.
                 </p>
                 
                 <p className="text-white text-opacity-90">
