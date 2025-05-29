@@ -259,7 +259,38 @@ const MealPlanPage: React.FC = () => {
   const [activityLevel, setActivityLevel] = useState('moderate');
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when today is Sunday
+    return new Date(today.setDate(diff));
+  });
   
+  // Format date range for display
+  const dateRangeText = useMemo(() => {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('en-US', { 
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    };
+    
+    return `${formatDate(currentWeekStart)} - ${formatDate(weekEnd)}`;
+  }, [currentWeekStart]);
+
+  // Function to navigate weeks
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeekStart(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+      return newDate;
+    });
+  };
+
   // Fetch profile data on component mount
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -420,6 +451,15 @@ const MealPlanPage: React.FC = () => {
       
       return acc;
     }, {});
+
+    // Sort meals by time for each day
+    Object.values(grouped).forEach(dayPlan => {
+      dayPlan.meals.sort((a, b) => {
+        const timeA = a.time.split(':').map(Number);
+        const timeB = b.time.split(':').map(Number);
+        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+      });
+    });
     
     return Object.values(grouped);
   }, [mealPlan]);
@@ -468,9 +508,25 @@ const MealPlanPage: React.FC = () => {
             {/* Controls */}
             <div className="bg-white rounded-lg shadow mb-6 p-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center">
-                  <Calendar className="mr-2 h-5 w-5 text-gray-500" />
-                  <h2 className="text-lg font-medium text-gray-900">Week of June 10, 2025</h2>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => navigateWeek('prev')}
+                    className="p-1 hover:bg-gray-100 rounded-full"
+                  >
+                    <ChevronRight className="h-5 w-5 text-gray-500 transform rotate-180" />
+                  </button>
+                  
+                  <div className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5 text-gray-500" />
+                    <h2 className="text-lg font-medium text-gray-900">{dateRangeText}</h2>
+                  </div>
+                  
+                  <button
+                    onClick={() => navigateWeek('next')}
+                    className="p-1 hover:bg-gray-100 rounded-full"
+                  >
+                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                  </button>
                 </div>
                 
                 <div className="flex space-x-3">

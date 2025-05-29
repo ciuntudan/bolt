@@ -640,55 +640,67 @@ class MealPlanGenerator:
         
         # Define minimum portions for different food types (in grams)
         min_portions = {
-            'eggs': 50,  
-            'whey_protein': 30,  
-            'bread': 30,  
-            'oils': 5,  
-            'fruits': 100,  
-            'vegetables': 100,  
-            'nuts': 30,  
-            'dairy': 100  
+            'eggs': 50,  # 1 egg
+            'whey_protein': 30,  # 1 scoop
+            'bread': 30,  # 1 slice
+            'oils': 5,  # 1 teaspoon
+            'fruits': 100,  # standard serving
+            'vegetables': 100,  # standard serving
+            'nuts': 30,  # standard serving
+            'dairy': 100,  # standard serving
+            'meat': 100,  # standard serving
+            'fish': 100,  # standard serving
+            'legumes': 100,  # standard serving
+            'grains': 50  # standard serving
         }
 
         for food_type, foods in food.items():
-            for name, nutrients in foods.items():
-                # Set base portion based on food type
-                base_portion = 100  
+            # Calculate total target macros for this food type
+            total_target = 0
+            if food_type == 'proteins':
+                total_target = target['protein']
+            elif food_type == 'carbs':
+                total_target = target['carbs']
+            elif food_type == 'fats':
+                total_target = target['fat']
+            
+            # Distribute target among foods of this type
+            num_foods = len(foods)
+            if num_foods > 0:
+                target_per_food = total_target / num_foods
                 
-                # Check for specific food types
-                if 'egg' in name.lower():
-                    base_portion = min_portions['eggs']
-                elif 'protein' in name.lower():
-                    base_portion = min_portions['whey_protein']
-                elif 'bread' in name.lower():
-                    base_portion = min_portions['bread']
-                elif 'oil' in name.lower():
-                    base_portion = min_portions['oils']
-                elif food_type == 'fruits':
-                    base_portion = min_portions['fruits']
-                elif food_type == 'vegetables':
-                    base_portion = min_portions['vegetables']
-                elif food_type == 'dairy':
-                    base_portion = min_portions['dairy']
-                
-                # Calculate portion based on target macros
-                if food_type == 'proteins' and nutrients['protein'] > 0:
-                    portion = max(base_portion, (target['protein'] / len(foods)) / (nutrients['protein'] / 100))
-                elif food_type == 'carbs' and nutrients['carbs'] > 0:
-                    portion = max(base_portion, (target['carbs'] / len(foods)) / (nutrients['carbs'] / 100))
-                elif food_type == 'fats' and nutrients['fat'] > 0:
-                    portion = max(base_portion, (target['fat'] / len(foods)) / (nutrients['fat'] / 100))
-                else:
-                    portion = base_portion
-                
-                # Round portion to nearest 5g for most items
-                portion = round(portion / 5) * 5
-                
-                # Special handling for eggs (round to whole eggs)
-                if 'egg' in name.lower():
-                    portion = max(1, round(portion / 50)) * 50  
-                
-                portions[name] = portion
+                for name, nutrients in foods.items():
+                    # Determine base portion based on food type
+                    base_portion = 100  # default
+                    
+                    # Set minimum portion based on food type
+                    for food_category, min_portion in min_portions.items():
+                        if food_category in name.lower() or food_category.rstrip('s') in name.lower():
+                            base_portion = min_portion
+                            break
+                    
+                    # Calculate portion based on target macros
+                    if food_type == 'proteins' and nutrients['protein'] > 0:
+                        portion = max(base_portion, (target_per_food / (nutrients['protein'] / 100)))
+                    elif food_type == 'carbs' and nutrients['carbs'] > 0:
+                        portion = max(base_portion, (target_per_food / (nutrients['carbs'] / 100)))
+                    elif food_type == 'fats' and nutrients['fat'] > 0:
+                        portion = max(base_portion, (target_per_food / (nutrients['fat'] / 100)))
+                    else:
+                        portion = base_portion
+                    
+                    # Ensure minimum portion size
+                    portion = max(portion, base_portion)
+                    
+                    # Round portion appropriately
+                    if 'egg' in name.lower():
+                        portion = max(1, round(portion / 50)) * 50  # Round to whole eggs
+                    elif 'protein' in name.lower() and 'whey' in name.lower():
+                        portion = max(1, round(portion / 30)) * 30  # Round to whole scoops
+                    else:
+                        portion = round(portion / 5) * 5  # Round to nearest 5g
+                    
+                    portions[name] = portion
 
         return portions
 
@@ -720,26 +732,45 @@ class MealPlanGenerator:
             for name, nutrients in foods.items():
                 portion = portions.get(name, 100)  # default to 100g if not specified
                 
-                # Determine appropriate unit
+                # Determine appropriate unit and conversion factor
                 unit = 'g'
+                conversion_factor = 1
+                
+                # Handle special cases
                 if 'egg' in name.lower():
-                    portion = portion / 50  
                     unit = 'piece'
+                    conversion_factor = 50  # 50g per egg
                 elif 'protein' in name.lower() and 'whey' in name.lower():
-                    portion = portion / 30  
                     unit = 'scoop'
+                    conversion_factor = 30  # 30g per scoop
+                elif 'bread' in name.lower():
+                    unit = 'slice'
+                    conversion_factor = 30  # 30g per slice
+                elif 'oil' in name.lower():
+                    unit = 'tsp'
+                    conversion_factor = 5  # 5g per teaspoon
+                
+                # Calculate display quantity
+                display_quantity = portion / conversion_factor if conversion_factor > 1 else portion
                 
                 # Calculate scaled nutrition values
                 scale_factor = portion / 100
                 food_item = {
                     'name': name.replace('_', ' ').title(),
-                    'quantity': round(portion if unit == 'g' else portion, 1),
+                    'quantity': round(display_quantity, 1),
                     'unit': unit,
                     'calories': round(nutrients['calories'] * scale_factor, 1),
                     'protein': round(nutrients['protein'] * scale_factor, 1),
                     'carbs': round(nutrients['carbs'] * scale_factor, 1),
                     'fat': round(nutrients['fat'] * scale_factor, 1)
                 }
+                
+                # Ensure no zero values in nutrition
+                for key in ['calories', 'protein', 'carbs', 'fat']:
+                    if food_item[key] == 0 and nutrients[key.replace('fat', 'fat')] > 0:
+                        food_item[key] = round(nutrients[key.replace('fat', 'fat')] * scale_factor, 1)
+                    if food_item[key] == 0:
+                        food_item[key] = 0.1  # Set minimum value to avoid zero
                 
                 # Add to meal
                 meal['foods'].append(food_item)
