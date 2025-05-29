@@ -1,0 +1,1240 @@
+from rest_framework import status, generics, permissions, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Avg, Count
+from .serializers import (
+    UserSerializer, RegisterSerializer, LoginSerializer, UserProfileSerializer,
+    WeightHistorySerializer, StrengthProgressSerializer, WorkoutLogSerializer,
+    NutritionLogSerializer, UserGoalSerializer, ProgressSummarySerializer,
+    UserTrainingPlanSerializer, UserTrainingPlanCreateSerializer,
+    UserMealPlanSerializer, UserMealPlanCreateSerializer,
+    TrainingPlanSerializer, TrainingPlanCreateSerializer,
+    TrainingDaySerializer, ExerciseSerializer,
+    TrainingProgressSerializer, TrainingAchievementSerializer
+)
+from .models import (
+    UserProfile, WeightHistory, StrengthProgress, WorkoutLog,
+    NutritionLog, UserGoal, UserTrainingPlan, UserTrainingDay,
+    UserExercise, UserMealPlan, UserMealTime, UserMealItem,
+    TrainingPlan, TrainingWeek, TrainingDay, Exercise,
+    TrainingProgress, TrainingAchievement
+)
+from .services.training_plan_generator import TrainingPlanGenerator
+from .workout_generator import (
+    generate_workouts, generate_cardio_workout, generate_cardio_days,
+    generate_week_description
+)
+from .meal_plan_generator import MealPlanGenerator
+import logging
+
+logger = logging.getLogger(__name__)
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = RegisterSerializer
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        
+        # Get user data to return
+        user_serializer = UserSerializer(user)
+        
+        return Response({
+            'user': user_serializer.data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
+
+class LoginView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+            
+            user = authenticate(username=username, password=password)
+            
+            if user:
+                refresh = RefreshToken.for_user(user)
+                user_serializer = UserSerializer(user)
+                
+                return Response({
+                    'user': user_serializer.data,
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                })
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request):
+        try:
+            # Get the token from request
+            refresh_token = request.data.get('refresh')
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class UserView(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+class ProfileView(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request):
+        """Get user profile data"""
+        profile = request.user.profile
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data)
+    
+    def patch(self, request):
+        """Update user profile data"""
+        profile = request.user.profile
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserProfileView(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request, user_id):
+        """Get another user's profile data"""
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+            serializer = UserProfileSerializer(profile)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class WeightHistoryView(generics.ListCreateAPIView):
+    serializer_class = WeightHistorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return WeightHistory.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class StrengthProgressView(generics.ListCreateAPIView):
+    serializer_class = StrengthProgressSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return StrengthProgress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class WorkoutLogView(generics.ListCreateAPIView):
+    serializer_class = WorkoutLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return WorkoutLog.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class NutritionLogView(generics.ListCreateAPIView):
+    serializer_class = NutritionLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return NutritionLog.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class UserGoalView(generics.ListCreateAPIView):
+    serializer_class = UserGoalSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return UserGoal.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class ProgressSummaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get progress summary for the authenticated user"""
+        try:
+            user = request.user
+            logger.info(f"Fetching progress summary for user {user.username}")
+            
+            now = timezone.now()
+            thirty_days_ago = now - timedelta(days=30)
+            seven_days_ago = now - timedelta(days=7)
+
+            # Weight change calculation
+            latest_weight = WeightHistory.objects.filter(user=user).order_by('-date').first()
+            first_weight = WeightHistory.objects.filter(user=user).order_by('date').first()
+            logger.info(f"Weight records - Latest: {latest_weight}, First: {first_weight}")
+            
+            weight_change = 0
+            if latest_weight and first_weight:
+                weight_change = latest_weight.weight - first_weight.weight
+                logger.info(f"Calculated weight change: {weight_change}")
+            
+            # Strength increase calculation
+            strength_increase = 0
+            strength_exercises = StrengthProgress.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).values('exercise').annotate(
+                avg_weight=Avg('weight')
+            )
+            logger.info(f"Found {len(strength_exercises)} strength exercises")
+            
+            if strength_exercises:
+                increases = []
+                for exercise in strength_exercises:
+                    first = StrengthProgress.objects.filter(
+                        user=user,
+                        exercise=exercise['exercise']
+                    ).order_by('date').first()
+                    
+                    if first and first.weight > 0:  # Prevent division by zero
+                        increase = (exercise['avg_weight'] - first.weight) / first.weight * 100
+                        increases.append(increase)
+                        logger.info(f"Strength increase for {exercise['exercise']}: {increase}%")
+                
+                if increases:
+                    strength_increase = sum(increases) / len(increases)
+                    logger.info(f"Average strength increase: {strength_increase}%")
+
+            # Workout consistency calculation
+            total_possible_workouts = 28  # 4 weeks * 7 days
+            completed_workouts = WorkoutLog.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).count()
+            workout_consistency = (completed_workouts / total_possible_workouts) * 100 if total_possible_workouts > 0 else 0
+            logger.info(f"Workout consistency: {workout_consistency}% ({completed_workouts}/{total_possible_workouts})")
+
+            # Goal progress calculation
+            active_goals = UserGoal.objects.filter(user=user, achieved=False)
+            goal_progress = 0
+            if active_goals:
+                progress_sum = sum(goal.progress_percentage for goal in active_goals)
+                goal_progress = progress_sum / active_goals.count()
+                logger.info(f"Goal progress: {goal_progress}% across {active_goals.count()} active goals")
+
+            # Recent achievements
+            recent_achievements = []
+            
+            # Weight achievement check
+            if latest_weight and first_weight:
+                if weight_change < 0:  # Weight loss achievement
+                    recent_achievements.append({
+                        'title': 'Weight Loss Achievement',
+                        'description': f'Lost {abs(weight_change):.1f} kg',
+                        'date': latest_weight.date.isoformat(),
+                        'icon': 'scale',
+                        'color': 'green'
+                    })
+                elif weight_change > 0:  # Weight gain achievement
+                    recent_achievements.append({
+                        'title': 'Muscle Gain Achievement',
+                        'description': f'Gained {weight_change:.1f} kg',
+                        'date': latest_weight.date.isoformat(),
+                        'icon': 'dumbbell',
+                        'color': 'blue'
+                    })
+
+            # Strength achievement check
+            recent_strength = StrengthProgress.objects.filter(
+                user=user,
+                date__gte=seven_days_ago
+            ).order_by('-weight').first()
+            
+            if recent_strength:
+                recent_achievements.append({
+                    'title': 'Strength Milestone',
+                    'description': f'New {recent_strength.exercise} record: {recent_strength.weight} kg',
+                    'date': recent_strength.date.isoformat(),
+                    'icon': 'dumbbell',
+                    'color': 'purple'
+                })
+
+            # Workout streak check
+            recent_workouts = WorkoutLog.objects.filter(
+                user=user,
+                date__gte=seven_days_ago
+            ).count()
+            
+            if recent_workouts >= 5:
+                recent_achievements.append({
+                    'title': 'Workout Streak',
+                    'description': f'Completed {recent_workouts} workouts in 7 days',
+                    'date': now.date().isoformat(),
+                    'icon': 'activity',
+                    'color': 'orange'
+                })
+            logger.info(f"Found {len(recent_achievements)} recent achievements")
+
+            # Prepare metrics data
+            body_metrics = list(WeightHistory.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).values('date', 'weight', 'body_fat', 'muscle_mass').order_by('date'))
+            logger.info(f"Found {len(body_metrics)} body metric records")
+
+            strength_metrics = list(StrengthProgress.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).values('date', 'exercise', 'weight').order_by('date'))
+            logger.info(f"Found {len(strength_metrics)} strength metric records")
+
+            workout_metrics = list(WorkoutLog.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).values('date', 'duration', 'intensity', 'calories_burned').order_by('date'))
+            logger.info(f"Found {len(workout_metrics)} workout metric records")
+
+            nutrition_metrics = list(NutritionLog.objects.filter(
+                user=user,
+                date__gte=thirty_days_ago
+            ).values('date', 'calories', 'protein', 'carbs', 'fats', 'water').order_by('date'))
+            logger.info(f"Found {len(nutrition_metrics)} nutrition metric records")
+
+            data = {
+                'weight_change': weight_change,
+                'strength_increase': strength_increase,
+                'workout_consistency': workout_consistency,
+                'goal_progress': goal_progress,
+                'recent_achievements': recent_achievements,
+                'body_metrics': body_metrics,
+                'strength_metrics': strength_metrics,
+                'workout_metrics': workout_metrics,
+                'nutrition_metrics': nutrition_metrics,
+            }
+            logger.info("Prepared data dictionary for serialization")
+
+            serializer = ProgressSummarySerializer(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Serializer validation failed: {serializer.errors}")
+                return Response(
+                    {"error": "Failed to process progress data", "details": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            logger.info("Successfully serialized progress data")
+
+            return Response(serializer.validated_data)
+
+        except Exception as e:
+            logger.error(f"Error fetching progress summary: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "Failed to fetch progress data", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ProgressMetricsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get detailed progress metrics for the authenticated user"""
+        try:
+            user = request.user
+            logger.info(f"Fetching progress metrics for user {user.username}")
+            
+            time_range = request.query_params.get('time_range', '7W')
+            
+            # Calculate date range
+            now = timezone.now()
+            if time_range == '1M':
+                start_date = now - timedelta(days=30)
+            elif time_range == '3M':
+                start_date = now - timedelta(days=90)
+            elif time_range == '7W':
+                start_date = now - timedelta(weeks=7)
+            elif time_range == '1Y':
+                start_date = now - timedelta(days=365)
+            else:  # ALL
+                start_date = None
+            
+            # Query metrics with date filter if applicable
+            date_filter = {'date__gte': start_date} if start_date else {}
+            
+            # Get body metrics
+            body_metrics = list(WeightHistory.objects.filter(
+                user=user,
+                **date_filter
+            ).order_by('date').values('date', 'weight', 'body_fat', 'muscle_mass'))
+            logger.info(f"Found {len(body_metrics)} body metric records")
+            
+            # Get strength metrics
+            strength_metrics = list(StrengthProgress.objects.filter(
+                user=user,
+                **date_filter
+            ).order_by('date').values('date', 'exercise', 'weight'))
+            logger.info(f"Found {len(strength_metrics)} strength metric records")
+            
+            # Get workout metrics
+            workout_metrics = list(WorkoutLog.objects.filter(
+                user=user,
+                **date_filter
+            ).order_by('date').values('date', 'duration', 'intensity', 'calories_burned'))
+            logger.info(f"Found {len(workout_metrics)} workout metric records")
+            
+            # Get nutrition metrics
+            nutrition_metrics = list(NutritionLog.objects.filter(
+                user=user,
+                **date_filter
+            ).order_by('date').values('date', 'calories', 'protein', 'carbs', 'fats', 'water'))
+            logger.info(f"Found {len(nutrition_metrics)} nutrition metric records")
+            
+            # Calculate achievements
+            achievements = []
+            
+            # Weight achievements
+            if body_metrics:
+                first_weight = body_metrics[0]['weight']
+                last_weight = body_metrics[-1]['weight']
+                weight_change = last_weight - first_weight
+                
+                if abs(weight_change) >= 2:  # Achievement for 2kg change
+                    achievements.append({
+                        'title': 'Weight Goal Progress',
+                        'description': f'{"Lost" if weight_change < 0 else "Gained"} {abs(weight_change):.1f} kg',
+                        'date': now.date().isoformat(),
+                        'icon': 'scale',
+                        'color': 'green' if weight_change < 0 else 'blue'
+                    })
+            
+            # Strength achievements
+            recent_strength = StrengthProgress.objects.filter(
+                user=user,
+                **date_filter
+            ).order_by('-weight').first()
+            
+            if recent_strength:
+                achievements.append({
+                    'title': 'Strength Milestone',
+                    'description': f'New {recent_strength.exercise} record: {recent_strength.weight} kg',
+                    'date': recent_strength.date.isoformat(),
+                    'icon': 'dumbbell',
+                    'color': 'purple'
+                })
+            
+            # Workout consistency achievement
+            workout_count = len(workout_metrics)
+            if workout_count >= 12:  # 3 workouts per week for 4 weeks
+                achievements.append({
+                    'title': 'Consistency Champion',
+                    'description': f'Completed {workout_count} workouts',
+                    'date': now.date().isoformat(),
+                    'icon': 'activity',
+                    'color': 'orange'
+                })
+            
+            data = {
+                'body_metrics': body_metrics,
+                'strength_metrics': strength_metrics,
+                'workout_metrics': workout_metrics,
+                'nutrition_metrics': nutrition_metrics,
+                'achievements': achievements,
+                'time_range': time_range
+            }
+            logger.info("Successfully prepared progress metrics data")
+            
+            return Response(data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error fetching progress metrics: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "Failed to fetch progress metrics", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class UserTrainingPlanListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserTrainingPlan.objects.filter(user=self.request.user, is_active=True)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return UserTrainingPlanCreateSerializer
+        return UserTrainingPlanSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class UserTrainingPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserTrainingPlanSerializer
+    
+    def get_queryset(self):
+        return UserTrainingPlan.objects.filter(user=self.request.user)
+
+class UserMealPlanListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserMealPlan.objects.filter(user=self.request.user, is_active=True)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return UserMealPlanCreateSerializer
+        return UserMealPlanSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class UserMealPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserMealPlanSerializer
+    
+    def get_queryset(self):
+        return UserMealPlan.objects.filter(user=self.request.user)
+
+class GenerateUserTrainingPlanView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            # Get user preferences from request
+            user_data = {
+                'goal': request.data.get('goal', 'strength'),
+                'difficulty': request.data.get('difficulty', 'intermediate'),
+                'duration_weeks': request.data.get('duration_weeks', 8),
+                'user': request.user
+            }
+            
+            # Initialize the generator
+            generator = TrainingPlanGenerator()
+            
+            try:
+                # Generate the plan
+                plan = generator.generate_plan(user_data)
+                
+                # Serialize and return the plan
+                serializer = TrainingPlanSerializer(plan)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                logger.error(f"Error generating training plan: {str(e)}", exc_info=True)
+                return Response(
+                    {'error': 'Failed to generate training plan', 'details': str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+        except Exception as e:
+            logger.error(f"Error in training plan generation view: {str(e)}", exc_info=True)
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class GenerateUserMealPlanView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Generate a personalized meal plan based on user preferences"""
+        # Get user preferences from request
+        goal = request.data.get('goal')
+        calories_target = request.data.get('calories_target')
+        dietary_restrictions = request.data.get('dietary_restrictions', [])
+        meals_per_day = request.data.get('meals_per_day', 4)
+        
+        # Get user's profile for personalization
+        profile = request.user.profile
+        
+        # Calculate macros based on goal
+        protein_target = int(profile.weight * 2.2)  # 2.2g per kg of body weight
+        if goal == 'muscle_gain':
+            calories_target = calories_target or int(profile.weight * 35)  # 35 calories per kg
+            carbs_target = int((calories_target * 0.5) / 4)  # 50% of calories from carbs
+            fats_target = int((calories_target * 0.25) / 9)  # 25% of calories from fats
+        elif goal == 'weight_loss':
+            calories_target = calories_target or int(profile.weight * 25)  # 25 calories per kg
+            carbs_target = int((calories_target * 0.4) / 4)  # 40% of calories from carbs
+            fats_target = int((calories_target * 0.3) / 9)  # 30% of calories from fats
+        else:  # maintenance
+            calories_target = calories_target or int(profile.weight * 30)  # 30 calories per kg
+            carbs_target = int((calories_target * 0.45) / 4)  # 45% of calories from carbs
+            fats_target = int((calories_target * 0.275) / 9)  # 27.5% of calories from fats
+        
+        # Create meal plan structure
+        meal_plan = {
+            'name': f'{goal.title()} Meal Plan',
+            'description': f'A personalized meal plan for {goal}',
+            'goal': goal,
+            'calories_target': calories_target,
+            'protein_target': protein_target,
+            'carbs_target': carbs_target,
+            'fats_target': fats_target,
+            'meal_times': self._generate_meal_times(
+                meals_per_day,
+                calories_target,
+                protein_target,
+                carbs_target,
+                fats_target
+            )
+        }
+        
+        # Create the plan
+        serializer = UserMealPlanCreateSerializer(data=meal_plan)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _generate_meal_times(self, meals_per_day, calories, protein, carbs, fats):
+        """Generate meal times with appropriate macro distribution"""
+        meal_times = []
+        
+        # Define meal schedules based on number of meals
+        meal_schedules = {
+            3: [
+                {'name': 'Breakfast', 'time': '08:00', 'ratio': 0.3},
+                {'name': 'Lunch', 'time': '13:00', 'ratio': 0.4},
+                {'name': 'Dinner', 'time': '19:00', 'ratio': 0.3}
+            ],
+            4: [
+                {'name': 'Breakfast', 'time': '08:00', 'ratio': 0.25},
+                {'name': 'Lunch', 'time': '12:30', 'ratio': 0.35},
+                {'name': 'Snack', 'time': '16:00', 'ratio': 0.1},
+                {'name': 'Dinner', 'time': '19:30', 'ratio': 0.3}
+            ],
+            5: [
+                {'name': 'Breakfast', 'time': '07:30', 'ratio': 0.25},
+                {'name': 'Morning Snack', 'time': '10:30', 'ratio': 0.1},
+                {'name': 'Lunch', 'time': '13:30', 'ratio': 0.3},
+                {'name': 'Afternoon Snack', 'time': '16:30', 'ratio': 0.1},
+                {'name': 'Dinner', 'time': '19:30', 'ratio': 0.25}
+            ],
+            6: [
+                {'name': 'Early Breakfast', 'time': '07:00', 'ratio': 0.2},
+                {'name': 'Morning Snack', 'time': '10:00', 'ratio': 0.1},
+                {'name': 'Lunch', 'time': '13:00', 'ratio': 0.25},
+                {'name': 'Afternoon Snack', 'time': '16:00', 'ratio': 0.1},
+                {'name': 'Dinner', 'time': '19:00', 'ratio': 0.25},
+                {'name': 'Evening Snack', 'time': '21:00', 'ratio': 0.1}
+            ]
+        }
+        
+        # Use the appropriate meal schedule or default to 4 meals
+        schedule = meal_schedules.get(meals_per_day, meal_schedules[4])
+        
+        for i, meal in enumerate(schedule):
+            meal_calories = int(calories * meal['ratio'])
+            meal_protein = int(protein * meal['ratio'])
+            meal_carbs = int(carbs * meal['ratio'])
+            meal_fats = int(fats * meal['ratio'])
+            
+            meal_time = {
+                'name': meal['name'],
+                'time': meal['time'],
+                'calories': meal_calories,
+                'protein': meal_protein,
+                'carbs': meal_carbs,
+                'fats': meal_fats,
+                'order': i + 1,
+                'meal_items': self._generate_meal_items(
+                    meal['name'],
+                    meal_calories,
+                    meal_protein,
+                    meal_carbs,
+                    meal_fats
+                )
+            }
+            meal_times.append(meal_time)
+        
+        return meal_times
+    
+    def _generate_meal_items(self, meal_type, calories, protein, carbs, fats):
+        """Generate meal items based on meal type and macros"""
+        # This is a basic template - in a real app, you'd have a food database
+        if meal_type == 'Breakfast':
+            return [
+                {
+                    'name': 'Oatmeal',
+                    'quantity': 100,
+                    'unit': 'g',
+                    'calories': int(calories * 0.4),
+                    'protein': int(protein * 0.2),
+                    'carbs': int(carbs * 0.6),
+                    'fats': int(fats * 0.1),
+                    'order': 1
+                },
+                {
+                    'name': 'Eggs',
+                    'quantity': 2,
+                    'unit': 'piece',
+                    'calories': int(calories * 0.3),
+                    'protein': int(protein * 0.6),
+                    'carbs': 0,
+                    'fats': int(fats * 0.6),
+                    'order': 2
+                },
+                {
+                    'name': 'Banana',
+                    'quantity': 1,
+                    'unit': 'piece',
+                    'calories': int(calories * 0.3),
+                    'protein': int(protein * 0.2),
+                    'carbs': int(carbs * 0.4),
+                    'fats': int(fats * 0.3),
+                    'order': 3
+                }
+            ]
+        elif meal_type == 'Lunch' or meal_type == 'Dinner':
+            return [
+                {
+                    'name': 'Chicken Breast',
+                    'quantity': 150,
+                    'unit': 'g',
+                    'calories': int(calories * 0.4),
+                    'protein': int(protein * 0.7),
+                    'carbs': 0,
+                    'fats': int(fats * 0.2),
+                    'order': 1
+                },
+                {
+                    'name': 'Brown Rice',
+                    'quantity': 100,
+                    'unit': 'g',
+                    'calories': int(calories * 0.3),
+                    'protein': int(protein * 0.1),
+                    'carbs': int(carbs * 0.7),
+                    'fats': int(fats * 0.1),
+                    'order': 2
+                },
+                {
+                    'name': 'Mixed Vegetables',
+                    'quantity': 200,
+                    'unit': 'g',
+                    'calories': int(calories * 0.3),
+                    'protein': int(protein * 0.2),
+                    'carbs': int(carbs * 0.3),
+                    'fats': int(fats * 0.7),
+                    'order': 3
+                }
+            ]
+        else:  # Snack
+            return [
+                {
+                    'name': 'Greek Yogurt',
+                    'quantity': 200,
+                    'unit': 'g',
+                    'calories': int(calories * 0.6),
+                    'protein': int(protein * 0.8),
+                    'carbs': int(carbs * 0.3),
+                    'fats': int(fats * 0.4),
+                    'order': 1
+                },
+                {
+                    'name': 'Mixed Nuts',
+                    'quantity': 30,
+                    'unit': 'g',
+                    'calories': int(calories * 0.4),
+                    'protein': int(protein * 0.2),
+                    'carbs': int(carbs * 0.7),
+                    'fats': int(fats * 0.6),
+                    'order': 2
+                }
+            ]
+
+class TrainingPlanViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TrainingPlanSerializer
+
+    def get_queryset(self):
+        return TrainingPlan.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TrainingPlanCreateSerializer
+        return TrainingPlanSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class TrainingDayViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TrainingDaySerializer
+
+    def get_queryset(self):
+        return TrainingDay.objects.filter(training_week__training_plan__user=self.request.user)
+
+class ExerciseViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ExerciseSerializer
+
+    def get_queryset(self):
+        return Exercise.objects.filter(training_day__training_week__training_plan__user=self.request.user)
+
+class TrainingProgressViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TrainingProgressSerializer
+
+    def get_queryset(self):
+        return TrainingProgress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class TrainingAchievementViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TrainingAchievementSerializer
+
+    def get_queryset(self):
+        return TrainingAchievement.objects.filter(user=self.request.user)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_training_plan(request):
+    """Generate a new training plan based on user preferences."""
+    try:
+        # Validate input data
+        serializer = TrainingPlanSerializer(data={
+            'name': f"{request.data.get('goal', 'Custom').title()} Training Plan",
+            'description': "AI-generated training plan based on your preferences",
+            'goal': request.data.get('goal', 'strength'),
+            'difficulty': request.data.get('difficulty', 'intermediate'),
+            'duration_weeks': request.data.get('duration_weeks', 8),
+            'training_style': request.data.get('training_style', 'traditional'),
+            'equipment_available': request.data.get('equipment_available', ['barbell', 'dumbbell', 'bodyweight']),
+            'include_deload_weeks': request.data.get('include_deload_weeks', False),
+            'experience_years': request.data.get('experience_years', 0),
+            'injuries_limitations': request.data.get('injuries_limitations', []),
+            'preferred_exercises': request.data.get('preferred_exercises', []),
+            'excluded_exercises': request.data.get('excluded_exercises', []),
+            'cardio_preferences': request.data.get('cardio_preferences', {
+                'type': ['running'],
+                'duration': 20,
+                'frequency': 2
+            })
+        })
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create the training plan
+        training_plan = serializer.save(user=request.user)
+        
+        # Generate weeks and workouts based on preferences
+        days_per_week = request.data.get('days_per_week', 4)
+        preferred_duration = request.data.get('preferred_workout_duration', 60)
+        
+        # Calculate deload weeks (if enabled)
+        deload_weeks = []
+        if training_plan.include_deload_weeks:
+            deload_frequency = 4  # Deload every 4 weeks
+            deload_weeks = list(range(deload_frequency, training_plan.duration_weeks + 1, deload_frequency))
+        
+        # Generate training weeks
+        for week_num in range(1, training_plan.duration_weeks + 1):
+            is_deload = week_num in deload_weeks
+            intensity_multiplier = 0.6 if is_deload else 1.0
+            
+            week = TrainingWeek.objects.create(
+                training_plan=training_plan,
+                week_number=week_num,
+                name=f"Week {week_num}" + (" (Deload)" if is_deload else ""),
+                description=generate_week_description(training_plan.goal, is_deload)
+            )
+            
+            # Generate workouts for each training day
+            workouts = generate_workouts(
+                days_per_week=days_per_week,
+                goal=training_plan.goal,
+                training_style=training_plan.training_style,
+                equipment=training_plan.equipment_available,
+                intensity_multiplier=intensity_multiplier,
+                preferred_duration=preferred_duration,
+                injuries=training_plan.injuries_limitations,
+                experience_years=training_plan.experience_years,
+                preferred_exercises=training_plan.preferred_exercises,
+                excluded_exercises=training_plan.excluded_exercises
+            )
+            
+            # Create training days
+            for day_num, workout in enumerate(workouts, 1):
+                training_day = TrainingDay.objects.create(
+                    training_week=week,
+                    day_of_week=day_num,
+                    name=workout['name'],
+                    description=workout['description'],
+                    duration_minutes=workout['duration']
+                )
+                
+                # Create exercises for the training day
+                for exercise_data in workout['exercises']:
+                    Exercise.objects.create(
+                        training_day=training_day,
+                        name=exercise_data['name'],
+                        sets=exercise_data['sets'],
+                        reps=exercise_data['reps'],
+                        weight=exercise_data.get('weight', ''),
+                        notes=exercise_data.get('notes', ''),
+                        order=len(training_day.exercises.all()) + 1
+                    )
+            
+            # Add cardio if enabled
+            if training_plan.cardio_preferences and week_num not in deload_weeks:
+                cardio_freq = training_plan.cardio_preferences.get('frequency', 2)
+                cardio_days = generate_cardio_days(
+                    cardio_freq,
+                    days_per_week,
+                    training_plan.cardio_preferences
+                )
+                
+                for day_num in cardio_days:
+                    cardio_workout = generate_cardio_workout(training_plan.cardio_preferences)
+                    training_day = TrainingDay.objects.create(
+                        training_week=week,
+                        day_of_week=day_num,
+                        name=cardio_workout['name'],
+                        description=cardio_workout['description'],
+                        duration_minutes=cardio_workout['duration']
+                    )
+                    
+                    Exercise.objects.create(
+                        training_day=training_day,
+                        name=cardio_workout['exercise'],
+                        sets=1,  # One continuous set for cardio
+                        reps=f"{cardio_workout['duration']} minutes",
+                        weight='bodyweight',
+                        notes=f"Intensity: {cardio_workout['intensity']}\n{cardio_workout['notes']}",
+                        order=1
+                    )
+        
+        # Return the complete training plan
+        serializer = TrainingPlanSerializer(training_plan)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def regenerate_training_plan(request, plan_id):
+    """Regenerate an existing training plan with new preferences."""
+    try:
+        training_plan = get_object_or_404(TrainingPlan, id=plan_id, user=request.user)
+        
+        # Update plan preferences
+        serializer = TrainingPlanSerializer(training_plan, data={
+            **request.data,
+            'name': training_plan.name,  # Preserve original name
+        }, partial=True)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Save updated preferences
+        training_plan = serializer.save()
+        
+        # Delete existing weeks and workouts
+        training_plan.weeks.all().delete()
+        
+        # Generate new training plan with updated preferences
+        days_per_week = request.data.get('days_per_week', 4)
+        preferred_duration = request.data.get('preferred_workout_duration', 60)
+        
+        # Calculate deload weeks
+        deload_weeks = []
+        if training_plan.include_deload_weeks:
+            deload_frequency = 4
+            deload_weeks = list(range(deload_frequency, training_plan.duration_weeks + 1, deload_frequency))
+        
+        # Generate new weeks and workouts
+        for week_num in range(1, training_plan.duration_weeks + 1):
+            is_deload = week_num in deload_weeks
+            intensity_multiplier = 0.6 if is_deload else 1.0
+            
+            week = TrainingWeek.objects.create(
+                training_plan=training_plan,
+                week_number=week_num,
+                name=f"Week {week_num}" + (" (Deload)" if is_deload else ""),
+                description=generate_week_description(training_plan.goal, is_deload)
+            )
+            
+            # Generate workouts
+            workouts = generate_workouts(
+                days_per_week=days_per_week,
+                goal=training_plan.goal,
+                training_style=training_plan.training_style,
+                equipment=training_plan.equipment_available,
+                intensity_multiplier=intensity_multiplier,
+                preferred_duration=preferred_duration,
+                injuries=training_plan.injuries_limitations,
+                experience_years=training_plan.experience_years,
+                preferred_exercises=training_plan.preferred_exercises,
+                excluded_exercises=training_plan.excluded_exercises
+            )
+            
+            # Create training days
+            for day_num, workout in enumerate(workouts, 1):
+                training_day = TrainingDay.objects.create(
+                    training_week=week,
+                    day_of_week=day_num,
+                    name=workout['name'],
+                    description=workout['description'],
+                    duration_minutes=workout['duration']
+                )
+                
+                # Create exercises
+                for exercise_data in workout['exercises']:
+                    Exercise.objects.create(
+                        training_day=training_day,
+                        name=exercise_data['name'],
+                        sets=exercise_data['sets'],
+                        reps=exercise_data['reps'],
+                        weight=exercise_data.get('weight', ''),
+                        notes=exercise_data.get('notes', ''),
+                        order=len(training_day.exercises.all()) + 1
+                    )
+            
+            # Add cardio if enabled
+            if training_plan.cardio_preferences and week_num not in deload_weeks:
+                cardio_freq = training_plan.cardio_preferences.get('frequency', 2)
+                cardio_days = generate_cardio_days(
+                    cardio_freq,
+                    days_per_week,
+                    training_plan.cardio_preferences
+                )
+                
+                for day_num in cardio_days:
+                    cardio_workout = generate_cardio_workout(training_plan.cardio_preferences)
+                    training_day = TrainingDay.objects.create(
+                        training_week=week,
+                        day_of_week=day_num,
+                        name=cardio_workout['name'],
+                        description=cardio_workout['description'],
+                        duration_minutes=cardio_workout['duration']
+                    )
+                    
+                    Exercise.objects.create(
+                        training_day=training_day,
+                        name=cardio_workout['exercise'],
+                        sets=1,  # One continuous set for cardio
+                        reps=f"{cardio_workout['duration']} minutes",
+                        weight='bodyweight',
+                        notes=f"Intensity: {cardio_workout['intensity']}\n{cardio_workout['notes']}",
+                        order=1
+                    )
+        
+        # Return updated plan
+        serializer = TrainingPlanSerializer(training_plan)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_workout(request, workout_id):
+    """Mark a workout as completed and record the progress."""
+    try:
+        # Get the workout
+        workout = get_object_or_404(TrainingDay, id=workout_id)
+        
+        # Verify user owns this workout
+        if workout.training_week.training_plan.user != request.user:
+            return Response(
+                {'error': 'Not authorized to modify this workout'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            # Mark workout as completed
+            workout.completed = True
+            workout.completed_at = timezone.now()
+            workout.save()
+        except Exception as e:
+            logger.warning(f"Error setting completed fields: {str(e)}")
+            # If the fields don't exist, we'll still return success
+            pass
+        
+        try:
+            # Mark exercises as completed
+            workout.exercises.all().update(completed=True)
+        except Exception as e:
+            logger.warning(f"Error marking exercises as completed: {str(e)}")
+            pass
+        
+        try:
+            # Create a workout log entry
+            WorkoutLog.objects.create(
+                user=request.user,
+                date=timezone.now(),
+                duration=workout.duration_minutes,
+                workout_type=workout.name,
+                notes=f"Completed {workout.name} from training plan"
+            )
+        except Exception as e:
+            logger.warning(f"Error creating workout log: {str(e)}")
+            pass
+        
+        # Return updated workout data
+        serializer = TrainingDaySerializer(workout)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error completing workout: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'Failed to complete workout', 'details': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_meal_plan(request):
+    """Generate a personalized meal plan using AI."""
+    try:
+        # Log incoming request data
+        logger.info(f"Generating meal plan with data: {request.data}")
+        
+        # Get user profile data
+        profile = request.user.profile
+        logger.info(f"User profile data: {profile.__dict__}")
+        
+        # Prepare user data for meal plan generation
+        user_data = {
+            'weight': float(profile.weight) if profile.weight else 70,
+            'height': float(profile.height) if profile.height else 170,
+            'age': profile.age if profile.age else 25,
+            'gender': profile.gender if profile.gender else 'male',
+            'activity_level': request.data.get('activity_level', 'moderate'),
+            'goal': request.data.get('goal', 'maintenance'),
+            'vegetarian': request.data.get('vegetarian', False),
+            'vegan': request.data.get('vegan', False),
+            'dietary_preferences': request.data.get('dietary_preferences', []),
+            'allergies': request.data.get('allergies', []),
+            'excluded_foods': request.data.get('excluded_foods', []),
+            'preferred_foods': request.data.get('preferred_foods', []),
+            'fitness_level': getattr(profile, 'fitness_level', 'intermediate'),
+            'body_fat_pct': 20,  # Default value
+            'blood_pressure_systolic': 120,  # Default value
+            'blood_pressure_diastolic': 80,  # Default value
+            'resting_heart_rate': 70,  # Default value
+            'hours_sleep': 7  # Default value
+        }
+        
+        logger.info(f"Prepared user data: {user_data}")
+        
+        # Initialize meal plan generator
+        generator = MealPlanGenerator()
+        
+        # Generate meal plan
+        meal_plan = generator.generate_meal_plan(
+            user_data,
+            duration_days=request.data.get('duration_days', 7)
+        )
+        
+        logger.info("Successfully generated meal plan")
+        
+        # Create meal plan in database
+        db_meal_plan = UserMealPlan.objects.create(
+            user=request.user,
+            name=f"{user_data['goal'].title()} Meal Plan",
+            description=f"AI-generated meal plan for {user_data['goal']}",
+            goal=user_data['goal'],
+            calories_target=meal_plan['weekly_totals']['calories'],
+            protein_target=meal_plan['weekly_totals']['protein'],
+            carbs_target=meal_plan['weekly_totals']['carbs'],
+            fats_target=meal_plan['weekly_totals']['fat'],
+            start_date=meal_plan['start_date'],
+            end_date=meal_plan['end_date']
+        )
+        
+        # Create meal times and items for each day
+        meal_order = {
+            'breakfast': 1,
+            'lunch': 2,
+            'dinner': 3,
+            'snack': 4
+        }
+        
+        for date, daily_plan in meal_plan['daily_plans'].items():
+            for meal_name, meal_data in daily_plan['meals'].items():
+                meal_time = UserMealTime.objects.create(
+                    meal_plan=db_meal_plan,
+                    name=meal_name.title(),
+                    time=_get_default_meal_time(meal_name),
+                    calories=meal_data['nutrition']['calories'],
+                    protein=meal_data['nutrition']['protein'],
+                    carbs=meal_data['nutrition']['carbs'],
+                    fats=meal_data['nutrition']['fat'],
+                    date=date,
+                    order=meal_order.get(meal_name.lower(), 1)
+                )
+                
+                # Create meal items
+                for idx, food in enumerate(meal_data['foods'], start=1):
+                    UserMealItem.objects.create(
+                        meal_time=meal_time,
+                        name=food['name'],
+                        quantity=food['quantity'],
+                        unit=food['unit'],
+                        calories=food['calories'],
+                        protein=food['protein'],
+                        carbs=food['carbs'],
+                        fats=food['fat'],
+                        order=idx
+                    )
+        
+        # Return the created meal plan
+        serializer = UserMealPlanSerializer(db_meal_plan)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Error generating meal plan: {str(e)}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+def _get_default_meal_time(meal_name: str) -> str:
+    """Get default time for each meal type."""
+    meal_times = {
+        'breakfast': '08:00',
+        'lunch': '13:00',
+        'dinner': '19:00',
+        'snack': '16:00'
+    }
+    return meal_times.get(meal_name.lower(), '12:00')

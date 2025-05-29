@@ -1,0 +1,7 @@
+node_modules
+*.joblib
+backend/users/models/*.joblib
+__pycache__/
+*.pyc
+.env
+.DS_Store
