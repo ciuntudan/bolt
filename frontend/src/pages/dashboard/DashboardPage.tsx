@@ -1,21 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../hooks/useDashboard';
 import type { DashboardData } from '../../hooks/useDashboard';
 import type { User } from '../../hooks/useAuth';
+import type { CompletedWorkout } from '../../types/workout';
 import { 
   ChevronRight, Dumbbell, Apple, Activity, 
   ArrowUp, ArrowDown, Calendar, Clock, Award, Target,
-  Loader2
+  Loader2, Plus, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Legend 
 } from 'recharts';
+import axios from '../../utils/axios';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
-const formatProgressData = (bodyMetrics: DashboardData['body_metrics'], strengthMetrics: DashboardData['strength_metrics']) => {
+interface WorkoutTemplate {
+  id: number;
+  name: string;
+  description: string;
+  muscle_groups: string;
+  difficulty_level: string;
+  estimated_duration: number;
+}
+
+const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | undefined, strengthMetrics: DashboardData['strength_metrics'] | null | undefined) => {
   const data = [];
   const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
@@ -30,14 +43,18 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'], strength
       strength: 0,
     };
 
-    const weightRecord = bodyMetrics.find(m => m.date.startsWith(date));
-    if (weightRecord) {
-      dayData.weight = weightRecord.weight;
+    if (bodyMetrics && Array.isArray(bodyMetrics)) {
+      const weightRecord = bodyMetrics.find(m => m.date.startsWith(date));
+      if (weightRecord) {
+        dayData.weight = weightRecord.weight;
+      }
     }
 
-    const strengthRecords = strengthMetrics.filter(m => m.date.startsWith(date));
-    if (strengthRecords.length > 0) {
-      dayData.strength = strengthRecords.reduce((acc, curr) => acc + curr.weight, 0) / strengthRecords.length;
+    if (strengthMetrics && Array.isArray(strengthMetrics)) {
+      const strengthRecords = strengthMetrics.filter(m => m.date.startsWith(date));
+      if (strengthRecords.length > 0) {
+        dayData.strength = strengthRecords.reduce((acc, curr) => acc + curr.weight, 0) / strengthRecords.length;
+      }
     }
 
     data.push(dayData);
@@ -46,7 +63,7 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'], strength
   return data;
 };
 
-const formatNutritionData = (nutritionMetrics: DashboardData['nutrition_metrics']) => {
+const formatNutritionData = (nutritionMetrics: DashboardData['nutrition_metrics'] | null | undefined) => {
   const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
@@ -54,12 +71,19 @@ const formatNutritionData = (nutritionMetrics: DashboardData['nutrition_metrics'
   });
 
   return lastSevenDays.map(date => {
-    const record = nutritionMetrics.find(m => m.date.startsWith(date)) || {
+    let record = {
       calories: 0,
       protein: 0,
       carbs: 0,
       fats: 0
     };
+
+    if (nutritionMetrics && Array.isArray(nutritionMetrics)) {
+      const foundRecord = nutritionMetrics.find(m => m.date.startsWith(date));
+      if (foundRecord) {
+        record = foundRecord;
+      }
+    }
 
     return {
       name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
@@ -73,8 +97,44 @@ const formatNutritionData = (nutritionMetrics: DashboardData['nutrition_metrics'
 
 const DashboardPage: React.FC = () => {
   const auth = useAuth();
-  const { data, loading, error } = useDashboard();
+  const { data, loading, error, refetch } = useDashboard();
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [weightInput, setWeightInput] = useState('');
+  const [weightError, setWeightError] = useState<string | null>(null);
+  const [recentWorkouts, setRecentWorkouts] = useState<CompletedWorkout[]>([]);
+  const [workoutsLoading, setWorkoutsLoading] = useState(true);
   
+  useEffect(() => {
+    if (auth?.user?.profile?.weight) {
+      setWeightInput(auth.user.profile.weight.toString());
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    fetchRecentWorkouts();
+  }, []);
+
+  const fetchRecentWorkouts = async () => {
+    try {
+      setWorkoutsLoading(true);
+      const response = await axios.get<CompletedWorkout[]>('/api/workouts/');
+      const workouts = response.data;
+      
+      // Filter completed workouts and sort by date
+      const completedWorkouts = workouts
+        .filter(w => w.is_completed)
+        .sort((a, b) => new Date(b.completed_date).getTime() - new Date(a.completed_date).getTime())
+        .slice(0, 3); // Get last 3 completed workouts
+      
+      setRecentWorkouts(completedWorkouts);
+    } catch (err) {
+      console.error('Error fetching recent workouts:', err);
+    } finally {
+      setWorkoutsLoading(false);
+    }
+  };
+
   const formatDate = () => {
     const date = new Date();
     return new Intl.DateTimeFormat('en-US', { 
@@ -84,6 +144,119 @@ const DashboardPage: React.FC = () => {
       day: 'numeric' 
     }).format(date);
   };
+
+  const handleWeightSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWeightError(null);
+
+    if (!weightInput || isNaN(parseFloat(weightInput)) || !selectedDate) {
+      setWeightError('Please enter a valid weight and date');
+      return;
+    }
+
+    try {
+      // Get the latest strength score from the metrics
+      const latestStrengthMetric = data?.strength_metrics[0]?.weight || 50;
+
+      // Log the weight
+      await axios.post('/api/progress/metrics/', {
+        date: selectedDate.toISOString().split('T')[0],
+        weight: parseFloat(weightInput),
+        strength_score: latestStrengthMetric,
+        notes: 'Weight logged from dashboard'
+      });
+
+      // Update user profile with new weight if it's today's weight
+      const today = new Date();
+      if (selectedDate.toDateString() === today.toDateString()) {
+        await axios.put('/api/profile/', {
+          current_weight: parseFloat(weightInput)
+        });
+
+        // Update the auth context with the new weight
+        if (auth?.user?.profile) {
+          auth.user.profile.weight = parseFloat(weightInput);
+        }
+      }
+      
+      setShowWeightModal(false);
+      setWeightInput('');
+      refetch(); // Refresh dashboard data
+      
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      successMessage.textContent = 'Weight logged successfully!';
+      document.body.appendChild(successMessage);
+      setTimeout(() => successMessage.remove(), 3000);
+      
+    } catch (err) {
+      console.error('Weight logging error:', err);
+      setWeightError('Failed to log weight. Please try again.');
+    }
+  };
+
+  const WeightLoggingModal = () => (
+    <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 ${showWeightModal ? 'block' : 'hidden'}`}>
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 w-[400px]">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Log Weight</h2>
+          <button
+            onClick={() => setShowWeightModal(false)}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleWeightSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date</label>
+            <DatePicker
+              selected={selectedDate}
+              onChange={(date) => setSelectedDate(date)}
+              maxDate={new Date()}
+              dateFormat="MMMM d, yyyy"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholderText="Select date"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={weightInput}
+              onChange={(e) => setWeightInput(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Enter weight in kg"
+            />
+          </div>
+
+          {weightError && (
+            <p className="text-sm text-red-600">{weightError}</p>
+          )}
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowWeightModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Log Weight
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 
   // If auth is not initialized yet, show loading
   if (!auth) {
@@ -125,104 +298,99 @@ const DashboardPage: React.FC = () => {
         
         {/* Stats overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {loading ? (
-            <div className="col-span-4 flex justify-center items-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          {/* Stats overview */}
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-lg shadow p-6"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <Activity size={24} />
+              </div>
+              <div className="ml-4">
+                <h2 className="text-sm font-medium text-gray-500">Current Weight</h2>
+                <div className="flex items-center">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {auth?.user?.profile?.weight || 0} kg
+                  </p>
+                  {data?.weight_change !== undefined && (
+                    <span className={`flex items-center ml-2 ${data.weight_change < 0 ? 'text-green-500' : 'text-red-500'} text-sm`}>
+                      {data.weight_change < 0 ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
+                      {Math.abs(data.weight_change).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-          ) : error ? (
-            <div className="col-span-4 text-center text-red-600 py-12">
-              {error}
+          </motion.div>
+          
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-lg shadow p-6"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <Dumbbell size={24} />
+              </div>
+              <div className="ml-4">
+                <h2 className="text-sm font-medium text-gray-500">Strength Increase</h2>
+                <div className="flex items-center">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {data?.strength_increase?.toFixed(1) || '0.0'}%
+                  </p>
+                  <span className="flex items-center ml-2 text-green-500 text-sm">
+                    <ArrowUp size={16} />
+                    30d
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : data && (
-            <>
-              <motion.div 
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow p-6"
-              >
+          </motion.div>
+          
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-lg shadow p-6"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <Calendar size={24} />
+              </div>
+              <div className="ml-4">
+                <h2 className="text-sm font-medium text-gray-500">Workout Consistency</h2>
                 <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                    <Activity size={24} />
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-sm font-medium text-gray-500">Current Weight</h2>
-                    <div className="flex items-center">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {data.body_metrics[data.body_metrics.length - 1]?.weight || 0} kg
-                      </p>
-                      <span className={`flex items-center ml-2 ${data.weight_change < 0 ? 'text-green-500' : 'text-red-500'} text-sm`}>
-                        {data.weight_change < 0 ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
-                        {Math.abs(data.weight_change).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {data?.workout_consistency?.toFixed(0) || '0'}%
+                  </p>
+                  <span className="ml-2 text-purple-500 text-sm">
+                    🔥
+                  </span>
                 </div>
-              </motion.div>
-              
-              <motion.div 
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow p-6"
-              >
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-lg shadow p-6"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                <Award size={24} />
+              </div>
+              <div className="ml-4">
+                <h2 className="text-sm font-medium text-gray-500">Recent Achievements</h2>
                 <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-100 text-green-600">
-                    <Dumbbell size={24} />
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-sm font-medium text-gray-500">Strength Increase</h2>
-                    <div className="flex items-center">
-                      <p className="text-2xl font-bold text-gray-900">
-                        {data.strength_increase.toFixed(1)}%
-                      </p>
-                      <span className="flex items-center ml-2 text-green-500 text-sm">
-                        <ArrowUp size={16} />
-                        30d
-                      </span>
-                    </div>
-                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {data?.recent_achievements?.length || 0}
+                  </p>
+                  <span className="flex items-center ml-2 text-yellow-500 text-sm">
+                    <Target size={16} className="mr-1" />
+                    New
+                  </span>
                 </div>
-              </motion.div>
-              
-              <motion.div 
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow p-6"
-              >
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                    <Calendar size={24} />
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-sm font-medium text-gray-500">Workout Consistency</h2>
-                    <div className="flex items-center">
-                      <p className="text-2xl font-bold text-gray-900">{data.workout_consistency.toFixed(0)}%</p>
-                      <span className="ml-2 text-purple-500 text-sm">
-                        🔥
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div 
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow p-6"
-              >
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                    <Award size={24} />
-                  </div>
-                  <div className="ml-4">
-                    <h2 className="text-sm font-medium text-gray-500">Recent Achievements</h2>
-                    <div className="flex items-center">
-                      <p className="text-2xl font-bold text-gray-900">{data.recent_achievements.length}</p>
-                      <span className="flex items-center ml-2 text-yellow-500 text-sm">
-                        <Target size={16} className="mr-1" />
-                        New
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
+              </div>
+            </div>
+          </motion.div>
         </div>
         
         {/* Main content grid */}
@@ -286,13 +454,13 @@ const DashboardPage: React.FC = () => {
             {/* Recent workouts */}
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-medium text-gray-900">Recent Workouts</h2>
-                <Link to="/workouts" className="text-sm text-blue-600 hover:text-blue-500 flex items-center">
+                <h2 className="text-lg font-medium text-gray-900">Recent Completed Workouts</h2>
+                <Link to="/training-plan" className="text-sm text-blue-600 hover:text-blue-500 flex items-center">
                   View all <ChevronRight size={16} />
                 </Link>
               </div>
               
-              {loading ? (
+              {workoutsLoading ? (
                 <div className="h-48 flex justify-center items-center">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                 </div>
@@ -300,27 +468,32 @@ const DashboardPage: React.FC = () => {
                 <div className="h-48 flex justify-center items-center text-red-600">
                   {error}
                 </div>
-              ) : data && data.workout_metrics.length > 0 ? (
+              ) : recentWorkouts.length > 0 ? (
                 <div className="space-y-4">
-                  {data.workout_metrics.slice(-3).map((workout, index) => (
-                    <div key={index} className="py-3 flex justify-between items-center border-b border-gray-200 last:border-0">
+                  {recentWorkouts.map((workout) => (
+                    <div key={workout.id} className="py-3 flex justify-between items-center border-b border-gray-200 last:border-0">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {new Date(workout.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                          {new Date(workout.completed_date).toLocaleDateString('en-US', { 
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {workout.duration} minutes • {workout.intensity} intensity
+                          {workout.workout_template.name} • {workout.duration_minutes} minutes
                         </p>
                       </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {workout.calories_burned} cal
+                      <div className="text-sm font-medium text-green-600">
+                        Completed
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  No recent workouts
+                  No completed workouts yet
                 </div>
               )}
             </div>
@@ -445,9 +618,86 @@ const DashboardPage: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Weight Logs */}
+            <div className="bg-white rounded-lg shadow p-6 mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">Weight History</h2>
+                <button
+                  onClick={() => {
+                    if (auth?.user?.profile?.weight) {
+                      setWeightInput(auth.user.profile.weight.toString());
+                    }
+                    setShowWeightModal(true);
+                  }}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Plus size={16} className="mr-1" /> Log Weight
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : error ? (
+                  <div className="text-center text-red-600 py-12">
+                    {error}
+                  </div>
+                ) : data && data.body_metrics && data.body_metrics.length > 0 ? (
+                  [...data.body_metrics]
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 5) // Show last 5 entries
+                    .map((metric, index, array) => (
+                      <div key={index} className="flex items-start border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                        <div className="flex-shrink-0">
+                          <div className="p-2 rounded-full bg-blue-50">
+                            <Activity className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between items-center">
+                            <h3 className="text-sm font-medium text-gray-900">
+                              {metric.weight} kg
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                              {new Date(metric.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          {index < array.length - 1 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {metric.weight - array[index + 1].weight > 0 ? (
+                                <span className="text-red-500 flex items-center">
+                                  <ArrowUp size={12} className="mr-1" />
+                                  +{(metric.weight - array[index + 1].weight).toFixed(1)} kg
+                                </span>
+                              ) : (
+                                <span className="text-green-500 flex items-center">
+                                  <ArrowDown size={12} className="mr-1" />
+                                  {(metric.weight - array[index + 1].weight).toFixed(1)} kg
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No weight logs yet. Start tracking your progress!
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      {WeightLoggingModal()}
     </div>
   );
 };

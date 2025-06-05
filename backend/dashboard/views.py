@@ -46,6 +46,12 @@ def dashboard_overview(request):
             date__lte=today - timedelta(days=7)
         ).first()
         
+        # Get all progress entries for the last 30 days
+        recent_progress = ProgressEntry.objects.filter(
+            user=user,
+            date__gte=today - timedelta(days=30)
+        ).order_by('-date')
+        
         # Calculate progress stats
         current_weight = latest_progress.weight if latest_progress else profile.current_weight
         current_strength = latest_progress.strength_score if latest_progress else 50
@@ -195,7 +201,7 @@ def dashboard_overview(request):
             'goal_progress': volume_progress,
             'training_stats': training_stats,
             'recent_achievements': achievements,
-            'body_metrics': ProgressEntrySerializer(latest_progress).data,
+            'body_metrics': ProgressEntrySerializer(recent_progress, many=True).data,
             'strength_metrics': [],  # Add strength metrics if available
             'workout_metrics': [{
                 'date': workout.scheduled_date.isoformat(),
@@ -255,7 +261,8 @@ def user_profile(request):
 
 class ProgressEntryListCreateView(generics.ListCreateAPIView):
     """
-    List all progress entries for user or create a new one
+    List all progress entries for user or create a new one.
+    If an entry already exists for the given date, it will be updated instead.
     """
     serializer_class = ProgressEntrySerializer
     permission_classes = [IsAuthenticated]
@@ -264,7 +271,17 @@ class ProgressEntryListCreateView(generics.ListCreateAPIView):
         return ProgressEntry.objects.filter(user=self.request.user)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        date = serializer.validated_data.get('date')
+        try:
+            # Try to get existing entry for this date
+            instance = ProgressEntry.objects.get(user=self.request.user, date=date)
+            # Update existing entry
+            for attr, value in serializer.validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+        except ProgressEntry.DoesNotExist:
+            # Create new entry if none exists
+            serializer.save(user=self.request.user)
 
 class WorkoutTemplateListView(generics.ListAPIView):
     """

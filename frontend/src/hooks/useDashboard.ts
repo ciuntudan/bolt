@@ -55,7 +55,7 @@ export const useDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/auth/progress/summary/');
+      const response = await axios.get('/api/progress/summary/');
       setData(response.data);
       setError(null);
     } catch (err) {
