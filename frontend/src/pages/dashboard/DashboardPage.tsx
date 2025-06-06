@@ -28,7 +28,7 @@ interface WorkoutTemplate {
   estimated_duration: number;
 }
 
-const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | undefined, strengthMetrics: DashboardData['strength_metrics'] | null | undefined) => {
+const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | undefined, strengthMetrics: DashboardData['strength_metrics'] | null | undefined, currentWeight: number) => {
   const data = [];
   const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
@@ -36,10 +36,12 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
     return date.toISOString().split('T')[0];
   });
 
+  let lastKnownWeight = currentWeight;
+
   for (const date of lastSevenDays) {
     const dayData = {
       name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-      weight: 0,
+      weight: lastKnownWeight,
       strength: 0,
     };
 
@@ -47,6 +49,7 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
       const weightRecord = bodyMetrics.find(m => m.date.startsWith(date));
       if (weightRecord) {
         dayData.weight = weightRecord.weight;
+        lastKnownWeight = weightRecord.weight;
       }
     }
 
@@ -389,7 +392,7 @@ const DashboardPage: React.FC = () => {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={formatProgressData(data.body_metrics, data.strength_metrics)}
+                      data={formatProgressData(data.body_metrics, data.strength_metrics, auth?.user?.profile?.weight || 0)}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
