@@ -20,3 +20,4 @@ dist-ssr
 *.sw?
 .env
 .env.example
+.db.sqlite3

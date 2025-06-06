@@ -10,7 +10,6 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import TrainingPlanPage from './pages/plans/TrainingPlanPage';
 import MealPlanPage from './pages/plans/MealPlanPage';
 import ProfilePage from './pages/profile/ProfilePage';
-import ProgressPage from './pages/progress/ProgressPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './index.css';
 
@@ -49,11 +48,6 @@ function App() {
             <Route path="profile" element={
               <ProtectedRoute>
                 <ProfilePage />
-              </ProtectedRoute>
-            } />
-            <Route path="progress" element={
-              <ProtectedRoute>
-                <ProgressPage />
               </ProtectedRoute>
             } />
             

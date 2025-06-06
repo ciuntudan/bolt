@@ -399,11 +399,8 @@ const DashboardPage: React.FC = () => {
           <div className="lg:col-span-8 space-y-8">
             {/* Progress charts */}
             <div className="bg-white shadow rounded-lg p-6">
-              <div className="flex justify-between items-center mb-6">
+              <div className="mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Your Progress</h2>
-                <Link to="/progress" className="text-sm text-blue-600 hover:text-blue-500 flex items-center">
-                  View details <ChevronRight size={16} />
-                </Link>
               </div>
               
               {loading ? (

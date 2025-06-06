@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { 
-  Menu, X, User, ChevronDown, Dumbbell, Apple, BarChart, Home, LogOut 
+  Menu, X, User, ChevronDown, Dumbbell, Apple, Home, LogOut 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -61,9 +61,6 @@ const Navbar: React.FC = () => {
                   </Link>
                   <Link to="/meal-plan" className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 border-b-2 border-transparent hover:border-blue-500">
                     Meal Plans
-                  </Link>
-                  <Link to="/progress" className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 border-b-2 border-transparent hover:border-blue-500">
-                    Progress
                   </Link>
                 </>
               )}
@@ -177,9 +174,6 @@ const Navbar: React.FC = () => {
                   </Link>
                   <Link to="/meal-plan" className="flex items-center text-base font-medium text-gray-900 hover:text-blue-600 hover:bg-gray-50 block px-3 py-2 rounded-md">
                     <Apple size={20} className="mr-2" />Meal Plans
-                  </Link>
-                  <Link to="/progress" className="flex items-center text-base font-medium text-gray-900 hover:text-blue-600 hover:bg-gray-50 block px-3 py-2 rounded-md">
-                    <BarChart size={20} className="mr-2" />Progress
                   </Link>
                   <Link to="/profile" className="flex items-center text-base font-medium text-gray-900 hover:text-blue-600 hover:bg-gray-50 block px-3 py-2 rounded-md">
                     <User size={20} className="mr-2" />Profile
