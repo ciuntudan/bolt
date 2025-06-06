@@ -14,6 +14,7 @@ from .serializers import (
     UserWorkoutSerializer, MealPlanSerializer, AchievementSerializer,
     DashboardDataSerializer, UserStreakSerializer
 )
+from users.models import TrainingDay, TrainingWeek, TrainingPlan
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -75,40 +76,38 @@ def dashboard_overview(request):
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
         
-        weekly_workouts = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__range=[week_start, week_end]
+        # Get user's training plans
+        user_plans = TrainingPlan.objects.filter(user=user)
+        
+        # Get all training days from user's plans
+        training_days = TrainingDay.objects.filter(
+            training_week__training_plan__in=user_plans
         )
         
-        weekly_workouts_completed = weekly_workouts.filter(is_completed=True).count()
+        # Calculate weekly stats
+        weekly_workouts = training_days.filter(
+            completed_at__range=[week_start, week_end]
+        )
+        
+        weekly_workouts_completed = weekly_workouts.filter(completed=True).count()
         weekly_workouts_total = weekly_workouts.count()
         
         # Calculate volume progress
         thirty_days_ago = today - timedelta(days=30)
-        completed_volume = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__gte=thirty_days_ago,
-            is_completed=True
+        completed_volume = training_days.filter(
+            completed=True,
+            completed_at__gte=thirty_days_ago
         ).count()
         
-        total_volume = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__gte=thirty_days_ago
+        total_volume = training_days.filter(
+            training_week__training_plan__in=user_plans
         ).count()
         
         volume_progress = (completed_volume / max(1, total_volume)) * 100 if total_volume > 0 else 0
         
         # Calculate program adherence
-        adherence = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__gte=thirty_days_ago,
-            is_completed=True
-        ).count()
-        
-        total_scheduled = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__gte=thirty_days_ago
-        ).count()
+        adherence = completed_volume
+        total_scheduled = total_volume
         
         program_adherence = (adherence / max(1, total_scheduled)) * 100 if total_scheduled > 0 else 0
         
@@ -154,19 +153,18 @@ def dashboard_overview(request):
                 'type': 'bronze'
             })
         
-        # Get recent workouts
-        recent_workouts = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date__lte=today
-        ).order_by('-scheduled_date')[:5]
+        # Get recent completed workouts (last 3)
+        recent_workouts = training_days.filter(
+            completed=True
+        ).order_by('-completed_at')[:3]
         
-        # Get today s workout
-        today_workout = UserWorkout.objects.filter(
-            user=user,
-            scheduled_date=today
+        # Get today's workout
+        today_workout = training_days.filter(
+            training_week__training_plan__in=user_plans,
+            completed=False
         ).first()
         
-        # Get today s meals
+        # Get today's meals
         today_meals = MealPlan.objects.filter(
             user=user,
             date=today
@@ -201,24 +199,41 @@ def dashboard_overview(request):
             'goal_progress': volume_progress,
             'training_stats': training_stats,
             'recent_achievements': achievements,
+            'recent_workouts': [
+                {
+                    'id': workout.id,
+                    'workout_template': {
+                        'name': workout.name,
+                        'description': workout.description
+                    },
+                    'completed_date': workout.completed_at,
+                    'duration_minutes': workout.duration_minutes,
+                    'is_completed': workout.completed
+                }
+                for workout in recent_workouts
+            ],
+            'today_workout': {
+                'id': today_workout.id,
+                'workout_template': {
+                    'name': today_workout.name,
+                    'description': today_workout.description
+                },
+                'scheduled_date': today,
+                'duration_minutes': today_workout.duration_minutes,
+                'is_completed': today_workout.completed
+            } if today_workout else None,
+            'today_meals': MealPlanSerializer(today_meals, many=True).data,
+            'weekly_nutrition': weekly_nutrition,
             'body_metrics': ProgressEntrySerializer(recent_progress, many=True).data,
-            'strength_metrics': [],  # Add strength metrics if available
-            'workout_metrics': [{
-                'date': workout.scheduled_date.isoformat(),
-                'duration': workout.duration_minutes,
-                'intensity': workout.intensity,
-                'calories_burned': workout.calories_burned
-            } for workout in recent_workouts],
-            'nutrition_metrics': weekly_nutrition,
-            'today_workout': UserWorkoutSerializer(today_workout).data if today_workout else None,
-            'today_meals': MealPlanSerializer(today_meals, many=True).data
+            'strength_metrics': [],  # Add strength metrics if needed
+            'nutrition_metrics': []  # Add nutrition metrics if needed
         }
         
-        return Response(dashboard_data, status=status.HTTP_200_OK)
+        return Response(dashboard_data)
         
     except Exception as e:
         return Response(
-            {'error': f'Failed to fetch dashboard data: {str(e)}'}, 
+            {'error': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

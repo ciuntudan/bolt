@@ -1,6 +1,25 @@
 import { useState, useEffect } from 'react';
 import axios from '../utils/axios';
 
+interface WorkoutTemplate {
+  id: number;
+  name: string;
+  description: string;
+  muscle_groups: string;
+  difficulty_level: string;
+  estimated_duration: number;
+}
+
+interface CompletedWorkout {
+  id: number;
+  workout_template: WorkoutTemplate;
+  scheduled_date: string;
+  completed_date: string;
+  duration_minutes: number;
+  notes: string;
+  is_completed: boolean;
+}
+
 export interface DashboardData {
   weight_change: number;
   strength_increase: number;
@@ -19,6 +38,28 @@ export interface DashboardData {
     description: string;
     date: string;
     type: 'gold' | 'silver' | 'bronze';
+  }[];
+  recent_workouts: CompletedWorkout[];
+  today_workout: CompletedWorkout | null;
+  today_meals: {
+    id: number;
+    date: string;
+    meal_type: string;
+    meal_name: string;
+    foods: string[];
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    scheduled_time: string;
+    is_consumed: boolean;
+  }[];
+  weekly_nutrition: {
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
   }[];
   body_metrics: {
     date: string;

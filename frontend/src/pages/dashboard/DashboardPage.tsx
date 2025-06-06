@@ -102,38 +102,12 @@ const DashboardPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [weightInput, setWeightInput] = useState('');
   const [weightError, setWeightError] = useState<string | null>(null);
-  const [recentWorkouts, setRecentWorkouts] = useState<CompletedWorkout[]>([]);
-  const [workoutsLoading, setWorkoutsLoading] = useState(true);
   
   useEffect(() => {
     if (auth?.user?.profile?.weight) {
       setWeightInput(auth.user.profile.weight.toString());
     }
   }, [auth]);
-
-  useEffect(() => {
-    fetchRecentWorkouts();
-  }, []);
-
-  const fetchRecentWorkouts = async () => {
-    try {
-      setWorkoutsLoading(true);
-      const response = await axios.get<CompletedWorkout[]>('/api/workouts/');
-      const workouts = response.data;
-      
-      // Filter completed workouts and sort by date
-      const completedWorkouts = workouts
-        .filter(w => w.is_completed)
-        .sort((a, b) => new Date(b.completed_date).getTime() - new Date(a.completed_date).getTime())
-        .slice(0, 3); // Get last 3 completed workouts
-      
-      setRecentWorkouts(completedWorkouts);
-    } catch (err) {
-      console.error('Error fetching recent workouts:', err);
-    } finally {
-      setWorkoutsLoading(false);
-    }
-  };
 
   const formatDate = () => {
     const date = new Date();
@@ -457,7 +431,7 @@ const DashboardPage: React.FC = () => {
                 </Link>
               </div>
               
-              {workoutsLoading ? (
+              {loading ? (
                 <div className="h-48 flex justify-center items-center">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                 </div>
@@ -465,9 +439,9 @@ const DashboardPage: React.FC = () => {
                 <div className="h-48 flex justify-center items-center text-red-600">
                   {error}
                 </div>
-              ) : recentWorkouts.length > 0 ? (
+              ) : data?.recent_workouts && data.recent_workouts.length > 0 ? (
                 <div className="space-y-4">
-                  {recentWorkouts.map((workout) => (
+                  {data.recent_workouts.map((workout) => (
                     <div key={workout.id} className="py-3 flex justify-between items-center border-b border-gray-200 last:border-0">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
