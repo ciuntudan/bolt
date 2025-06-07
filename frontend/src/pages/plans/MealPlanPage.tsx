@@ -295,7 +295,7 @@ const MealPlanPage: React.FC = () => {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await axios.get('/api/profile/');
+        const response = await axios.get('/profile/');
         setProfileData(response.data);
         
         // Set initial activity level from profile
@@ -360,7 +360,7 @@ const MealPlanPage: React.FC = () => {
       setError(null);
       
       // Use profile data for meal plan generation
-      const response = await axios.post('/api/meal-plans/generate/', {
+      const response = await axios.post('/meal-plans/generate/', {
         weight: profileData?.weight || 70, // default values as fallback
         height: profileData?.height || 170,
         age: profileData?.age || 25,

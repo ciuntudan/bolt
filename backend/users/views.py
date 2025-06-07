@@ -27,6 +27,7 @@ from .models import (
     TrainingPlan, TrainingWeek, TrainingDay, Exercise,
     TrainingProgress, TrainingAchievement
 )
+from dashboard.models import ProgressEntry
 from .services.training_plan_generator import TrainingPlanGenerator
 from .workout_generator import (
     generate_workouts, generate_cardio_workout, generate_cardio_days,
@@ -111,12 +112,49 @@ class ProfileView(APIView):
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
     
-    def patch(self, request):
+    def put(self, request):
         """Update user profile data"""
         profile = request.user.profile
         serializer = UserProfileSerializer(profile, data=request.data, partial=True)
         
         if serializer.is_valid():
+            # If weight is being updated, create weight logs
+            if 'weight' in request.data:
+                weight = float(request.data['weight'])
+                today = timezone.now().date()
+                
+                # Update or create ProgressEntry
+                progress_entry, created = ProgressEntry.objects.get_or_create(
+                    user=request.user,
+                    date=today,
+                    defaults={
+                        'weight': weight,
+                        'strength_score': 50,
+                        'notes': 'Weight updated from profile'
+                    }
+                )
+                if not created:
+                    progress_entry.weight = weight
+                    progress_entry.save()
+                
+                # Update or create WeightHistory
+                weight_history = WeightHistory.objects.filter(
+                    user=request.user,
+                    date=today
+                ).first()
+                
+                if weight_history:
+                    weight_history.weight = weight
+                    weight_history.notes = 'Weight updated from profile'
+                    weight_history.save()
+                else:
+                    WeightHistory.objects.create(
+                        user=request.user,
+                        date=today,
+                        weight=weight,
+                        notes='Weight updated from profile'
+                    )
+            
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

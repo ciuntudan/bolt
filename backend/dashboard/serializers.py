@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
-    UserProfile, ProgressEntry, WorkoutTemplate, Exercise, 
-    WorkoutExercise, UserWorkout, MealPlan, Achievement, UserStreak
+    ProgressEntry, WorkoutTemplate, UserWorkout, 
+    MealPlan, Achievement, UserStreak
 )
+from users.models import UserProfile
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,85 +17,53 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
-            'user', 'current_weight', 'target_weight', 'height', 
-            'age', 'gender', 'fitness_level', 'goal', 'created_at', 'updated_at'
+            'user', 'weight', 'target_weight', 'height', 
+            'age', 'gender', 'fitness_level', 'avatar',
+            'workout_frequency', 'workout_duration', 'activity_level',
+            'stress_level', 'preferred_workout_time', 'allergies',
+            'medical_conditions', 'medications', 'injuries',
+            'updated_at'
         ]
 
 class ProgressEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProgressEntry
-        fields = [
-            'id', 'date', 'weight', 'strength_score', 
-            'body_fat_percentage', 'muscle_mass', 'notes', 'created_at'
-        ]
-
-class ExerciseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Exercise
-        fields = [
-            'id', 'name', 'muscle_group', 'equipment_needed', 
-            'instructions', 'difficulty_level'
-        ]
-
-class WorkoutExerciseSerializer(serializers.ModelSerializer):
-    exercise = ExerciseSerializer(read_only=True)
-    
-    class Meta:
-        model = WorkoutExercise
-        fields = [
-            'id', 'exercise', 'sets', 'reps_min', 'reps_max', 
-            'weight_suggestion', 'rest_time', 'order'
-        ]
+        fields = '__all__'
 
 class WorkoutTemplateSerializer(serializers.ModelSerializer):
-    exercises = WorkoutExerciseSerializer(many=True, read_only=True)
-    
     class Meta:
         model = WorkoutTemplate
-        fields = [
-            'id', 'name', 'description', 'muscle_groups', 
-            'difficulty_level', 'estimated_duration', 'exercises'
-        ]
+        fields = '__all__'
 
 class UserWorkoutSerializer(serializers.ModelSerializer):
-    workout_template = WorkoutTemplateSerializer(read_only=True)
+    workout_template = WorkoutTemplateSerializer()
     
     class Meta:
         model = UserWorkout
-        fields = [
-            'id', 'workout_template', 'scheduled_date', 'completed_date',
-            'duration_minutes', 'notes', 'is_completed'
-        ]
+        fields = '__all__'
 
 class MealPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = MealPlan
-        fields = [
-            'id', 'date', 'meal_type', 'meal_name', 'foods', 
-            'calories', 'protein', 'carbs', 'fat', 
-            'scheduled_time', 'is_consumed'
-        ]
+        fields = '__all__'
 
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievement
-        fields = [
-            'id', 'title', 'description', 'icon', 'category', 
-            'earned_date', 'is_new'
-        ]
+        fields = '__all__'
 
 class UserStreakSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserStreak
-        fields = ['current_streak', 'longest_streak', 'last_workout_date']
+        fields = '__all__'
 
 class DashboardStatsSerializer(serializers.Serializer):
     """Serializer for dashboard overview stats"""
     current_weight = serializers.FloatField()
     target_weight = serializers.FloatField()
-    weight_change_percentage = serializers.FloatField()
-    strength_score = serializers.IntegerField()
-    strength_change_percentage = serializers.FloatField()
+    weight_change = serializers.FloatField()
+    strength_score = serializers.FloatField()
+    strength_change = serializers.FloatField()
     current_streak = serializers.IntegerField()
     total_achievements = serializers.IntegerField()
     new_achievements = serializers.IntegerField()

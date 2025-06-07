@@ -75,13 +75,8 @@ const ProfilePage: React.FC = () => {
       setProfileData(data);
       setSuccessMessage('Profile updated successfully');
       
-      // Update the user context if needed
-      if (auth.user && auth.user.profile) {
-        auth.user.profile = {
-          ...auth.user.profile,
-          ...data
-        };
-      }
+      // Update the auth context
+      auth.updateProfile(data);
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to update profile';
       setError(errorMessage);

@@ -96,7 +96,7 @@ export const useDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/progress/summary/');
+      const response = await axios.get('/progress/summary/');
       setData(response.data);
       setError(null);
     } catch (err) {

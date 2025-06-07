@@ -23,4 +23,7 @@ urlpatterns = [
     # Achievements
     path('achievements/', views.AchievementListView.as_view(), name='achievements'),
     path('achievements/mark-read/', views.mark_achievements_read, name='mark_achievements_read'),
+    
+    # Weight logging
+    path('weight/log/', views.log_weight, name='log_weight'),
 ]

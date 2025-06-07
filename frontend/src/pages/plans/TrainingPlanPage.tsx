@@ -129,7 +129,7 @@ const TrainingPlanPage: React.FC = () => {
 
   const fetchTrainingPlans = async () => {
     try {
-      const response = await axios.get('/api/training-plans/');
+      const response = await axios.get('/training-plans/');
       setTrainingPlans(response.data);
       setError(null);
     } catch (err) {
@@ -154,13 +154,13 @@ const TrainingPlanPage: React.FC = () => {
       const { days_per_week, preferred_workout_duration, ...planData } = planPreferences;
       
       if (planToRegenerate) {
-        response = await axios.post(`/api/training-plans/${planToRegenerate}/regenerate/`, {
+        response = await axios.post(`/training-plans/${planToRegenerate}/regenerate/`, {
           ...planData,
           days_per_week,
           preferred_workout_duration
         });
       } else {
-        response = await axios.post('/api/training-plans/generate/', {
+        response = await axios.post('/training-plans/generate/', {
           ...planData,
           days_per_week,
           preferred_workout_duration
@@ -214,7 +214,7 @@ const TrainingPlanPage: React.FC = () => {
 
   const completeExercise = async (exerciseId: number) => {
     try {
-      await axios.patch(`/api/exercises/${exerciseId}/`, {
+      await axios.patch(`/exercises/${exerciseId}/`, {
         completed: true
       });
       
@@ -261,7 +261,7 @@ const TrainingPlanPage: React.FC = () => {
   const completeWorkout = async (workoutId: number) => {
     try {
         setLoading(true);
-        const response = await axios.post(`/api/workouts/${workoutId}/complete/`);
+        const response = await axios.post(`/workouts/${workoutId}/complete/`);
         
         // Update the workout in the training plans state
         setTrainingPlans(prevPlans => 

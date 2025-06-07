@@ -2,56 +2,21 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-class UserProfile(models.Model):
-    """Extended user profile with fitness data"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='dashboard_profile')
-    current_weight = models.FloatField(help_text="Weight in kgs")
-    target_weight = models.FloatField(help_text="Target weight in kgs")
-    height = models.FloatField(help_text="Height in cm")
-    age = models.IntegerField()
-    gender = models.CharField(max_length=10, choices=[('male', 'Male'), ('female', 'Female')])
-    fitness_level = models.CharField(
-        max_length=20, 
-        choices=[
-            ('beginner', 'Beginner'),
-            ('intermediate', 'Intermediate'),
-            ('advanced', 'Advanced')
-        ]
-    )
-    goal = models.CharField(
-        max_length=20,
-        choices=[
-            ('weight_loss', 'Weight Loss'),
-            ('muscle_gain', 'Muscle Gain'),
-            ('maintenance', 'Maintenance')
-        ]
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.username}'s Profile"
-
 class ProgressEntry(models.Model):
-    """Track user's progress over time"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='progress_entries')
+    """Track user's progress metrics"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     weight = models.FloatField(help_text="Weight in kgs")
-    strength_score = models.IntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text="Strength score from 0-100"
-    )
-    body_fat_percentage = models.FloatField(null=True, blank=True)
-    muscle_mass = models.FloatField(null=True, blank=True)
+    strength_score = models.FloatField(help_text="Overall strength score")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'date')
         ordering = ['-date']
+        verbose_name_plural = "Progress entries"
 
     def __str__(self):
-        return f"{self.user.username} - {self.date}"
+        return f"{self.user.username}'s progress on {self.date}"
 
 class WorkoutTemplate(models.Model):
     """Template for workouts"""

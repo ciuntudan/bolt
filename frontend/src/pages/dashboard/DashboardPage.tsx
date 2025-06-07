@@ -36,7 +36,14 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
     return date.toISOString().split('T')[0];
   });
 
+  // Find the most recent weight from bodyMetrics
   let lastKnownWeight = currentWeight;
+  if (bodyMetrics && Array.isArray(bodyMetrics) && bodyMetrics.length > 0) {
+    const mostRecentMetric = bodyMetrics[0]; // Already ordered by date desc
+    if (mostRecentMetric) {
+      lastKnownWeight = mostRecentMetric.weight;
+    }
+  }
 
   for (const date of lastSevenDays) {
     const dayData = {
@@ -132,28 +139,17 @@ const DashboardPage: React.FC = () => {
     }
 
     try {
-      // Get the latest strength score from the metrics
-      const latestStrengthMetric = data?.strength_metrics[0]?.weight || 50;
-
-      // Log the weight
-      await axios.post('/api/progress/metrics/', {
+      // Log the weight using the correct endpoint
+      await axios.post('/weight/log/', {
         date: selectedDate.toISOString().split('T')[0],
         weight: parseFloat(weightInput),
-        strength_score: latestStrengthMetric,
+        strength_score: data?.strength_metrics[0]?.weight || 50,
         notes: 'Weight logged from dashboard'
       });
 
-      // Update user profile with new weight if it's today's weight
-      const today = new Date();
-      if (selectedDate.toDateString() === today.toDateString()) {
-        await axios.put('/api/profile/', {
-          current_weight: parseFloat(weightInput)
-        });
-
-        // Update the auth context with the new weight
-        if (auth?.user?.profile) {
-          auth.user.profile.weight = parseFloat(weightInput);
-        }
+      // Update the auth context
+      if (auth) {
+        auth.updateProfile({ weight: parseFloat(weightInput) });
       }
       
       setShowWeightModal(false);

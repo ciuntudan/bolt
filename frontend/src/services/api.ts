@@ -18,7 +18,7 @@ export interface ProfileData {
   fitness_level: string;
 }
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://127.0.0.1:8000/api';
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -158,7 +158,7 @@ export const authAPI = {
   },
 
   updateProfile: async (profileData: Partial<Profile>) => {
-    const response = await api.patch('/auth/profile/', profileData);
+    const response = await api.put('/auth/profile/', profileData);
     return response.data;
   },
 };

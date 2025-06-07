@@ -1,44 +1,35 @@
-from rest_framework import generics, status
+from django.utils import timezone
+from django.shortcuts import get_object_or_404
+from django.db.models import Count, Avg, Q
+from django.db.models.functions import TruncDate
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Q, Avg
-from django.utils import timezone
-from datetime import datetime, timedelta, date
+from rest_framework import status, generics
+from datetime import timedelta, date, datetime
 from .models import (
-    UserProfile, ProgressEntry, WorkoutTemplate, UserWorkout, 
+    ProgressEntry, WorkoutTemplate, UserWorkout, 
     MealPlan, Achievement, UserStreak
 )
+from users.models import WeightHistory, UserProfile, TrainingDay, TrainingWeek, TrainingPlan
 from .serializers import (
     UserProfileSerializer, ProgressEntrySerializer, WorkoutTemplateSerializer,
     UserWorkoutSerializer, MealPlanSerializer, AchievementSerializer,
-    DashboardDataSerializer, UserStreakSerializer
+    UserStreakSerializer, DashboardStatsSerializer
 )
-from users.models import TrainingDay, TrainingWeek, TrainingPlan
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_overview(request):
     """
-    Get comprehensive dashboard data for the authenticated user
+    Get dashboard overview data
     """
     user = request.user
-    today = date.today()
+    today = timezone.now().date()
     
     try:
-        # Get or create user profile
-        profile, created = UserProfile.objects.get_or_create(
-            user=user,
-            defaults={
-                'current_weight': 70.0,
-                'target_weight': 75.0,
-                'height': 175.0,
-                'age': 25,
-                'gender': 'male',
-                'fitness_level': 'intermediate',
-                'goal': 'muscle_gain'
-            }
-        )
+        # Get user profile
+        profile = UserProfile.objects.get(user=user)
         
         # Get latest progress entries
         latest_progress = ProgressEntry.objects.filter(user=user).first()
@@ -53,8 +44,15 @@ def dashboard_overview(request):
             date__gte=today - timedelta(days=30)
         ).order_by('-date')
         
-        # Calculate progress stats
-        current_weight = latest_progress.weight if latest_progress else profile.current_weight
+        # Get latest weight from either ProgressEntry or WeightHistory
+        latest_weight_entry = WeightHistory.objects.filter(user=user).order_by('-date').first()
+        current_weight = latest_weight_entry.weight if latest_weight_entry else (latest_progress.weight if latest_progress else profile.weight)
+        
+        # Update profile's weight if it's different from the latest weight
+        if current_weight != profile.weight:
+            profile.weight = current_weight
+            profile.save()
+        
         current_strength = latest_progress.strength_score if latest_progress else 50
         
         weight_change = 0
@@ -244,18 +242,7 @@ def user_profile(request):
     Get or update user profile
     """
     try:
-        profile, created = UserProfile.objects.get_or_create(
-            user=request.user,
-            defaults={
-                'current_weight': 70.0,
-                'target_weight': 75.0,
-                'height': 175.0,
-                'age': 25,
-                'gender': 'male',
-                'fitness_level': 'intermediate',
-                'goal': 'muscle_gain'
-            }
-        )
+        profile = UserProfile.objects.get(user=request.user)
         
         if request.method == 'GET':
             serializer = UserProfileSerializer(profile)
@@ -264,6 +251,39 @@ def user_profile(request):
         elif request.method == 'PUT':
             serializer = UserProfileSerializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
+                # If weight is being updated, create a weight log
+                if 'weight' in request.data:
+                    new_weight = float(request.data['weight'])
+                    # Create both ProgressEntry and WeightHistory records
+                    today = timezone.now().date()
+                    
+                    # Update or create ProgressEntry
+                    progress_entry, created = ProgressEntry.objects.get_or_create(
+                        user=request.user,
+                        date=today,
+                        defaults={
+                            'weight': new_weight,
+                            'strength_score': 50,
+                            'notes': 'Weight updated from profile'
+                        }
+                    )
+                    if not created:
+                        progress_entry.weight = new_weight
+                        progress_entry.save()
+                    
+                    # Update or create WeightHistory
+                    weight_history, created = WeightHistory.objects.get_or_create(
+                        user=request.user,
+                        date=today,
+                        defaults={
+                            'weight': new_weight,
+                            'notes': 'Weight updated from profile'
+                        }
+                    )
+                    if not created:
+                        weight_history.weight = new_weight
+                        weight_history.save()
+                
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -399,5 +419,101 @@ def mark_achievements_read(request):
     except Exception as e:
         return Response(
             {'error': f'Failed to mark achievements: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def log_weight(request):
+    """Log a new weight entry"""
+    try:
+        date = request.data.get('date')
+        weight = request.data.get('weight')
+        notes = request.data.get('notes', '')
+        strength_score = request.data.get('strength_score', 50)
+        
+        # Validate required fields
+        if not date or not weight:
+            return Response(
+                {'error': 'Date and weight are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate weight format and range
+        try:
+            weight = float(weight)
+            if weight < 30 or weight > 300:
+                return Response(
+                    {'error': 'Weight must be between 30 and 300 kg'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {'error': 'Invalid weight format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Parse and validate date
+        try:
+            log_date = datetime.strptime(date, '%Y-%m-%d').date()
+            if log_date > timezone.now().date():
+                return Response(
+                    {'error': 'Cannot log weight for future dates'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update or create ProgressEntry
+        progress_entry, created = ProgressEntry.objects.get_or_create(
+            user=request.user,
+            date=log_date,
+            defaults={
+                'weight': weight,
+                'strength_score': strength_score,
+                'notes': notes
+            }
+        )
+        if not created:
+            progress_entry.weight = weight
+            progress_entry.strength_score = strength_score
+            progress_entry.notes = notes
+            progress_entry.save()
+
+        # Update or create WeightHistory
+        weight_history = WeightHistory.objects.filter(
+            user=request.user,
+            date=log_date
+        ).first()
+        
+        if weight_history:
+            weight_history.weight = weight
+            weight_history.notes = notes
+            weight_history.save()
+        else:
+            weight_history = WeightHistory.objects.create(
+                user=request.user,
+                date=log_date,
+                weight=weight,
+                notes=notes
+            )
+
+        # Update user's profile weight
+        profile = request.user.profile
+        profile.weight = weight
+        profile.save()
+
+        return Response({
+            'message': 'Weight logged successfully',
+            'weight': weight,
+            'date': date
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to log weight: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
