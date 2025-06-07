@@ -44,21 +44,46 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        
-        # Generate tokens
-        refresh = RefreshToken.for_user(user)
-        
-        # Get user data to return
-        user_serializer = UserSerializer(user)
-        
-        return Response({
-            'user': user_serializer.data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Create user and profile in a transaction
+            from django.db import transaction
+            with transaction.atomic():
+                user = serializer.save()
+                
+                # Ensure profile exists and update it
+                profile = user.profile
+                profile_data = {
+                    'age': request.data.get('age'),
+                    'height': request.data.get('height'),
+                    'weight': request.data.get('weight'),
+                    'gender': request.data.get('gender'),
+                    'fitness_level': request.data.get('fitness_level'),
+                }
+                
+                for key, value in profile_data.items():
+                    if value is not None:
+                        setattr(profile, key, value)
+                profile.save()
+                
+                # Generate tokens
+                refresh = RefreshToken.for_user(user)
+                
+                # Get user data to return
+                user_serializer = UserSerializer(user)
+                
+                return Response({
+                    'user': user_serializer.data,
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
     permission_classes = (AllowAny,)
@@ -108,56 +133,72 @@ class ProfileView(APIView):
     
     def get(self, request):
         """Get user profile data"""
-        profile = request.user.profile
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+        try:
+            profile = request.user.profile
+            serializer = UserProfileSerializer(profile)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to fetch profile: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def put(self, request):
         """Update user profile data"""
-        profile = request.user.profile
-        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
-        
-        if serializer.is_valid():
-            # If weight is being updated, create weight logs
-            if 'weight' in request.data:
-                weight = float(request.data['weight'])
-                today = timezone.now().date()
-                
-                # Update or create ProgressEntry
-                progress_entry, created = ProgressEntry.objects.get_or_create(
-                    user=request.user,
-                    date=today,
-                    defaults={
-                        'weight': weight,
-                        'strength_score': 50,
-                        'notes': 'Weight updated from profile'
-                    }
-                )
-                if not created:
-                    progress_entry.weight = weight
-                    progress_entry.save()
-                
-                # Update or create WeightHistory
-                weight_history = WeightHistory.objects.filter(
-                    user=request.user,
-                    date=today
-                ).first()
-                
-                if weight_history:
-                    weight_history.weight = weight
-                    weight_history.notes = 'Weight updated from profile'
-                    weight_history.save()
-                else:
-                    WeightHistory.objects.create(
-                        user=request.user,
-                        date=today,
-                        weight=weight,
-                        notes='Weight updated from profile'
-                    )
+        try:
+            profile = request.user.profile
+            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
             
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if serializer.is_valid():
+                # If weight is being updated, create weight logs
+                if 'weight' in request.data:
+                    weight = float(request.data['weight'])
+                    today = timezone.now().date()
+                    
+                    try:
+                        # Update or create ProgressEntry
+                        progress_entry, created = ProgressEntry.objects.get_or_create(
+                            user=request.user,
+                            date=today,
+                            defaults={
+                                'weight': weight,
+                                'strength_score': 50,
+                                'notes': 'Weight updated from profile'
+                            }
+                        )
+                        if not created:
+                            progress_entry.weight = weight
+                            progress_entry.save()
+                        
+                        # Update or create WeightHistory
+                        weight_history = WeightHistory.objects.filter(
+                            user=request.user,
+                            date=today
+                        ).first()
+                        
+                        if weight_history:
+                            weight_history.weight = weight
+                            weight_history.notes = 'Weight updated from profile'
+                            weight_history.save()
+                        else:
+                            WeightHistory.objects.create(
+                                user=request.user,
+                                date=today,
+                                weight=weight,
+                                notes='Weight updated from profile'
+                            )
+                    except Exception as e:
+                        # Log the error but don't fail the profile update
+                        print(f"Error updating weight history: {e}")
+                
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to update profile: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UserProfileView(APIView):
     permission_classes = (IsAuthenticated,)

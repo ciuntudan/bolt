@@ -21,11 +21,19 @@ export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  error: string | null;
-  token: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (data: any) => Promise<void>;
+  register: (data: {
+    name: string;
+    email: string;
+    password: string;
+    age: number;
+    height: number;
+    weight: number;
+    gender: string;
+    fitness_level: string;
+  }) => Promise<void>;
+  updateProfile: (profileData: Partial<User['profile']>) => void;
 }
 
 export const useAuth = () => {

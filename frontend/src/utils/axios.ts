@@ -33,6 +33,15 @@ instance.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          // No refresh token available, clear everything and redirect to login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          delete instance.defaults.headers.common['Authorization'];
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+
         const response = await instance.post('/auth/refresh/', {
           refresh: refreshToken,
         });
@@ -49,8 +58,12 @@ instance.interceptors.response.use(
         // If refresh token fails, log out the user
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        delete instance.defaults.headers.common['Authorization'];
+        
+        // Only redirect to login if we're not already there
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(err);
       }
     }

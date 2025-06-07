@@ -24,6 +24,16 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  register: (data: {
+    name: string;
+    email: string;
+    password: string;
+    age: number;
+    height: number;
+    weight: number;
+    gender: string;
+    fitness_level: string;
+  }) => Promise<void>;
   updateProfile: (profileData: Partial<User['profile']>) => void;
 }
 
@@ -81,17 +91,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        await axios.post('/auth/logout/', { refresh: refreshToken });
+      const accessToken = localStorage.getItem('access_token');
+      
+      // Only attempt to call logout endpoint if we have both tokens
+      if (refreshToken && accessToken) {
+        try {
+          await axios.post('/auth/logout/', { refresh: refreshToken });
+        } catch (error) {
+          console.error('Logout API call failed:', error);
+          // Continue with cleanup even if API call fails
+        }
       }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
+      
+      // Always clean up local storage and state
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
       setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Ensure we still clean up even if something fails
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const register = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    age: number;
+    height: number;
+    weight: number;
+    gender: string;
+    fitness_level: string;
+  }) => {
+    try {
+      const [firstName, ...lastNameParts] = data.name.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      const response = await axios.post('/auth/register/', {
+        username: data.email,
+        email: data.email,
+        password: data.password,
+        password2: data.password,
+        first_name: firstName,
+        last_name: lastName || firstName, // Fallback if no last name
+        age: data.age,
+        height: data.height,
+        weight: data.weight,
+        gender: data.gender.toLowerCase(),
+        fitness_level: data.fitness_level.toLowerCase()
+      });
+
+      const { access, refresh, user: userData } = response.data;
+      localStorage.setItem('access_token', access);
+      localStorage.setItem('refresh_token', refresh);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+
+      setUser(userData);
+      setIsAuthenticated(true);
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      if (error.response?.data) {
+        // If we have specific error messages from the backend, throw those
+        throw new Error(Object.values(error.response.data).flat().join(', '));
+      }
+      throw error;
     }
   };
 
@@ -108,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, login, logout, register, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

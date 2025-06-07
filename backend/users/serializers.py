@@ -65,9 +65,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True, required=True)
     
     # Profile fields
-    age = serializers.IntegerField(required=True)
-    height = serializers.FloatField(required=True)
-    weight = serializers.FloatField(required=True)
+    age = serializers.IntegerField(required=True, min_value=13, max_value=120)
+    height = serializers.FloatField(required=True, min_value=100, max_value=250)
+    weight = serializers.FloatField(required=True, min_value=30, max_value=300)
     gender = serializers.ChoiceField(choices=UserProfile.GENDER_CHOICES, required=True)
     fitness_level = serializers.ChoiceField(choices=UserProfile.FITNESS_LEVEL_CHOICES, required=True)
 
@@ -97,34 +97,35 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        # Remove profile fields from user creation data
-        profile_data = {
-            'age': validated_data.pop('age'),
-            'height': validated_data.pop('height'),
-            'weight': validated_data.pop('weight'),
-            'gender': validated_data.pop('gender'),
-            'fitness_level': validated_data.pop('fitness_level'),
-        }
-        
-        # Remove password2 field
-        validated_data.pop('password2')
-        
-        # Create user
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            password=validated_data['password'],
-        )
-        
-        # Update profile
-        profile = user.profile
-        for key, value in profile_data.items():
-            setattr(profile, key, value)
-        profile.save()
-        
-        return user
+        try:
+            from django.db import transaction
+            with transaction.atomic():
+                # Extract profile data
+                profile_data = {
+                    'age': validated_data.pop('age'),
+                    'height': validated_data.pop('height'),
+                    'weight': validated_data.pop('weight'),
+                    'gender': validated_data.pop('gender'),
+                    'fitness_level': validated_data.pop('fitness_level'),
+                }
+                validated_data.pop('password2')
+                
+                # Create user
+                password = validated_data.pop('password')
+                user = User.objects.create_user(
+                    **validated_data,
+                    password=password
+                )
+                
+                # The signal will have created the profile, now we just update it
+                profile = UserProfile.objects.get(user=user)
+                for key, value in profile_data.items():
+                    setattr(profile, key, value)
+                profile.save()
+                
+                return user
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
