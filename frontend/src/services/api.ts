@@ -87,6 +87,9 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   register: async (name: string, email: string, password: string, profileData: ProfileData) => {
+    // Clear old tokens before register
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     const [firstName, ...lastNameParts] = name.split(' ');
     const lastName = lastNameParts.join(' ');
 
@@ -113,6 +116,9 @@ export const authAPI = {
   },
 
   login: async (email: string, password: string) => {
+    // Clear old tokens before login
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     const response = await api.post('/auth/login/', {
       username: email,
       password: password,

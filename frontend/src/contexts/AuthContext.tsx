@@ -70,6 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
+      // Clear old tokens before login
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       const response = await axios.post('/auth/login/', {
         username: email,
         password: password,
@@ -82,8 +85,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(user);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      if (error.response?.data) {
+        throw new Error(Object.values(error.response.data).flat().join(', '));
+      }
       throw error;
     }
   };
@@ -131,6 +137,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fitness_level: string;
   }) => {
     try {
+      // Clear old tokens before register
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       const [firstName, ...lastNameParts] = data.name.split(' ');
       const lastName = lastNameParts.join(' ');
 
@@ -158,7 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Registration failed:', error);
       if (error.response?.data) {
-        // If we have specific error messages from the backend, throw those
         throw new Error(Object.values(error.response.data).flat().join(', '));
       }
       throw error;

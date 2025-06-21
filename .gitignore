@@ -1,8 +1,39 @@
+# Node and Python artifacts
 node_modules
-*.joblib
-backend/users/models/*.joblib
 __pycache__/
 *.pyc
-.env
 .DS_Store
+
+# Environment and database
+.env
 .db.sqlite3
+
+# ML model artifacts and large files
+*.joblib
+backend/users/models/
+backend/users/models/*
+
+# Ignore all files over 10MB (GitHub will block them anyway, but this helps locally)
+# This requires git-lfs or a pre-commit hook for full enforcement, but we can add a pattern:
+*.zip
+*.tar
+*.tar.gz
+*.h5
+*.ckpt
+*.pt
+*.pkl
+*.npz
+*.npy
+*.csv
+*.xlsx
+*.sav
+*.weights
+*.onnx
+*.pb
+*.tflite
+*.bin
+*.dat
+*.log
+
+# Custom: ignore any file over 10MB (advisory, not enforced by git natively)
+# To enforce, use a pre-commit hook or git-lfs
