@@ -36,29 +36,28 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
     return date.toISOString().split('T')[0];
   });
 
-  // Find the most recent weight from bodyMetrics
-  let lastKnownWeight = currentWeight;
-  if (bodyMetrics && Array.isArray(bodyMetrics) && bodyMetrics.length > 0) {
-    const mostRecentMetric = bodyMetrics[0]; // Already ordered by date desc
-    if (mostRecentMetric) {
-      lastKnownWeight = mostRecentMetric.weight;
-    }
+  // Sort bodyMetrics by date ascending for easier lookup
+  let sortedBodyMetrics: { date: string; weight: number }[] = [];
+  if (bodyMetrics && Array.isArray(bodyMetrics)) {
+    sortedBodyMetrics = [...bodyMetrics].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   for (const date of lastSevenDays) {
-    const dayData = {
-      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-      weight: lastKnownWeight,
-      strength: 0,
-    };
-
-    if (bodyMetrics && Array.isArray(bodyMetrics)) {
-      const weightRecord = bodyMetrics.find(m => m.date.startsWith(date));
-      if (weightRecord) {
-        dayData.weight = weightRecord.weight;
-        lastKnownWeight = weightRecord.weight;
+    // Find the closest previous weight entry (on or before this date)
+    let weightForDay = currentWeight;
+    if (sortedBodyMetrics.length > 0) {
+      // Find all entries on or before this date
+      const previousEntries = sortedBodyMetrics.filter(m => m.date <= date);
+      if (previousEntries.length > 0) {
+        weightForDay = previousEntries[previousEntries.length - 1].weight;
       }
     }
+
+    const dayData = {
+      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      weight: weightForDay,
+      strength: 0,
+    };
 
     if (strengthMetrics && Array.isArray(strengthMetrics)) {
       const strengthRecords = strengthMetrics.filter(m => m.date.startsWith(date));
