@@ -175,19 +175,6 @@ const ProfilePage: React.FC = () => {
                   <li>
                     <button
                       className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                        activeSection === 'fitnessProfile'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setActiveSection('fitnessProfile')}
-                    >
-                      <Activity className="mr-3 h-5 w-5" />
-                      Fitness Profile
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
                         activeSection === 'goals'
                           ? 'bg-blue-50 text-blue-700'
                           : 'text-gray-700 hover:bg-gray-50'
@@ -196,19 +183,6 @@ const ProfilePage: React.FC = () => {
                     >
                       <Target className="mr-3 h-5 w-5" />
                       Goals
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                        activeSection === 'healthData'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setActiveSection('healthData')}
-                    >
-                      <FileText className="mr-3 h-5 w-5" />
-                      Health Data
                     </button>
                   </li>
                   <li>
@@ -404,148 +378,6 @@ const ProfilePage: React.FC = () => {
               </div>
             )}
             
-            {/* Fitness Profile */}
-            {activeSection === 'fitnessProfile' && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">Fitness Profile</h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Update your fitness preferences and activity levels.
-                  </p>
-                </div>
-                
-                <div className="p-6">
-                  <form className="space-y-6">
-                    <div>
-                      <label htmlFor="fitnessLevel" className="block text-sm font-medium text-gray-700">
-                        Fitness Level
-                      </label>
-                      <select
-                        id="fitnessLevel"
-                        name="fitness_level"
-                        defaultValue={profileData?.fitness_level}
-                        className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      >
-                        <option>Beginner</option>
-                        <option>Intermediate</option>
-                        <option>Advanced</option>
-                        <option>Athletic</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="activityLevel" className="block text-sm font-medium text-gray-700">
-                        Activity Level
-                      </label>
-                      <select
-                        id="activityLevel"
-                        name="activityLevel"
-                        defaultValue={userData.activityLevel}
-                        className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      >
-                        <option>Sedentary (office job, little exercise)</option>
-                        <option>Lightly active (light exercise 1-3 days/week)</option>
-                        <option>Moderately active (moderate exercise 3-5 days/week)</option>
-                        <option>Very active (hard exercise 6-7 days/week)</option>
-                        <option>Extremely active (physical job, hard exercise daily)</option>
-                      </select>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label htmlFor="workoutFrequency" className="block text-sm font-medium text-gray-700">
-                          Workout Frequency
-                        </label>
-                        <select
-                          id="workoutFrequency"
-                          name="workoutFrequency"
-                          defaultValue={userData.workoutFrequency}
-                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >
-                          <option>1-2 times per week</option>
-                          <option>3-4 times per week</option>
-                          <option>4-5 times per week</option>
-                          <option>6-7 times per week</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="workoutDuration" className="block text-sm font-medium text-gray-700">
-                          Workout Duration
-                        </label>
-                        <select
-                          id="workoutDuration"
-                          name="workoutDuration"
-                          defaultValue={userData.workoutDuration}
-                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >
-                          <option>15-30 minutes</option>
-                          <option>30-45 minutes</option>
-                          <option>45-60 minutes</option>
-                          <option>60-90 minutes</option>
-                          <option>90+ minutes</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <span className="block text-sm font-medium text-gray-700 mb-2">
-                        Preferred Exercise Types
-                      </span>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                        {['Weight training', 'Cardio', 'HIIT', 'Yoga', 'Pilates', 'Calisthenics', 'CrossFit', 'Running'].map((type) => (
-                          <div key={type} className="flex items-center">
-                            <input
-                              id={`exercise-${type}`}
-                              name="exerciseType"
-                              type="checkbox"
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              defaultChecked={type === 'Weight training' || type === 'Cardio'}
-                            />
-                            <label htmlFor={`exercise-${type}`} className="ml-2 block text-sm text-gray-700">
-                              {type}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="dietaryPreferences" className="block text-sm font-medium text-gray-700 mb-2">
-                        Dietary Preferences
-                      </label>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                        {['High protein', 'Low carb', 'Vegetarian', 'Vegan', 'Paleo', 'Keto', 'Mediterranean', 'Intermittent fasting'].map((diet) => (
-                          <div key={diet} className="flex items-center">
-                            <input
-                              id={`diet-${diet}`}
-                              name="dietaryPreferences"
-                              type="checkbox"
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              defaultChecked={userData.dietaryPreferences.includes(diet)}
-                            />
-                            <label htmlFor={`diet-${diet}`} className="ml-2 block text-sm text-gray-700">
-                              {diet}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Save className="mr-2 -ml-1 h-5 w-5" />
-                        Save Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-            
             {/* Goals */}
             {activeSection === 'goals' && (
               <div className="bg-white rounded-lg shadow">
@@ -555,314 +387,155 @@ const ProfilePage: React.FC = () => {
                     Set and track your fitness and health goals.
                   </p>
                 </div>
-                
                 <div className="p-6">
-                  <form className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Primary Goals
-                      </label>
-                      <div className="space-y-2">
-                        {['Weight loss', 'Muscle gain', 'Improved strength', 'Better endurance', 'Overall health', 'Sport-specific training'].map((goal) => (
-                          <div key={goal} className="flex items-center">
-                            <input
-                              id={`goal-${goal}`}
-                              name="primaryGoals"
-                              type="checkbox"
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              defaultChecked={userData.goals.includes(goal)}
-                            />
-                            <label htmlFor={`goal-${goal}`} className="ml-2 block text-sm text-gray-700">
-                              {goal}
-                            </label>
-                          </div>
-                        ))}
+                  <form className="space-y-6" onSubmit={e => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    handleProfileUpdate({
+                      // Only update weight and strength goals
+                      target_weight: formData.get('targetWeight') ? parseFloat(formData.get('targetWeight') as string) : undefined,
+                      weight_goal_date: formData.get('weightGoalDate') as string,
+                      bench_press_goal: formData.get('benchPress') ? parseFloat(formData.get('benchPress') as string) : undefined,
+                      squat_goal: formData.get('squat') ? parseFloat(formData.get('squat') as string) : undefined,
+                      deadlift_goal: formData.get('deadlift') ? parseFloat(formData.get('deadlift') as string) : undefined,
+                      strength_goal_date: formData.get('strengthGoalDate') as string,
+                    });
+                  }}>
+                    <div className="space-y-4">
+                      {/* Weight Goal */}
+                      <div className="border border-gray-200 rounded-md p-4">
+                        <div 
+                          className="flex justify-between items-center cursor-pointer"
+                          onClick={() => toggleSection('weightGoal')}
+                        >
+                          <h3 className="text-sm font-medium text-gray-900">Weight Goal</h3>
+                          {expandedSection === 'weightGoal' ? (
+                            <ChevronUp className="h-5 w-5 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                          )}
+                        </div>
+                        {expandedSection === 'weightGoal' && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+                          >
+                            <div>
+                              <label htmlFor="currentWeight" className="block text-xs font-medium text-gray-700">
+                                Current Weight (kgs)
+                              </label>
+                              <input
+                                type="number"
+                                name="currentWeight"
+                                id="currentWeight"
+                                defaultValue={userData.weight}
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                disabled
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor="targetWeight" className="block text-xs font-medium text-gray-700">
+                                Target Weight (kgs)
+                              </label>
+                              <input
+                                type="number"
+                                name="targetWeight"
+                                id="targetWeight"
+                                defaultValue="88"
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label htmlFor="weightGoalDate" className="block text-xs font-medium text-gray-700">
+                                Target Date
+                              </label>
+                              <input
+                                type="date"
+                                name="weightGoalDate"
+                                id="weightGoalDate"
+                                defaultValue="2025-09-30"
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                      {/* Strength Goal */}
+                      <div className="border border-gray-200 rounded-md p-4">
+                        <div 
+                          className="flex justify-between items-center cursor-pointer"
+                          onClick={() => toggleSection('strengthGoal')}
+                        >
+                          <h3 className="text-sm font-medium text-gray-900">Strength Goal</h3>
+                          {expandedSection === 'strengthGoal' ? (
+                            <ChevronUp className="h-5 w-5 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                          )}
+                        </div>
+                        {expandedSection === 'strengthGoal' && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-4 space-y-4"
+                          >
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                              <div>
+                                <label htmlFor="benchPress" className="block text-xs font-medium text-gray-700">
+                                  Bench Press (kgs)
+                                </label>
+                                <input
+                                  type="number"
+                                  name="benchPress"
+                                  id="benchPress"
+                                  defaultValue="100"
+                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                />
+                              </div>
+                              <div>
+                                <label htmlFor="squat" className="block text-xs font-medium text-gray-700">
+                                  Squat (kgs)
+                                </label>
+                                <input
+                                  type="number"
+                                  name="squat"
+                                  id="squat"
+                                  defaultValue="150"
+                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                />
+                              </div>
+                              <div>
+                                <label htmlFor="deadlift" className="block text-xs font-medium text-gray-700">
+                                  Deadlift (kgs)
+                                </label>
+                                <input
+                                  type="number"
+                                  name="deadlift"
+                                  id="deadlift"
+                                  defaultValue="150"
+                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label htmlFor="strengthGoalDate" className="block text-xs font-medium text-gray-700">
+                                Target Date
+                              </label>
+                              <input
+                                type="date"
+                                name="strengthGoalDate"
+                                id="strengthGoalDate"
+                                defaultValue="2025-11-30"
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                              />
+                            </div>
+                          </motion.div>
+                        )}
                       </div>
                     </div>
-                    
-                    <div>
-                      <span className="block text-sm font-medium text-gray-700 mb-3">
-                        Specific Goals
-                      </span>
-                      
-                      <div className="space-y-4">
-                        {/* Weight Goal */}
-                        <div className="border border-gray-200 rounded-md p-4">
-                          <div 
-                            className="flex justify-between items-center cursor-pointer"
-                            onClick={() => toggleSection('weightGoal')}
-                          >
-                            <h3 className="text-sm font-medium text-gray-900">Weight Goal</h3>
-                            {expandedSection === 'weightGoal' ? (
-                              <ChevronUp className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            )}
-                          </div>
-                          
-                          {expandedSection === 'weightGoal' && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
-                            >
-                              <div>
-                                <label htmlFor="currentWeight" className="block text-xs font-medium text-gray-700">
-                                  Current Weight (kgs)
-                                </label>
-                                <input
-                                  type="number"
-                                  name="currentWeight"
-                                  id="currentWeight"
-                                  defaultValue={userData.weight}
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label htmlFor="targetWeight" className="block text-xs font-medium text-gray-700">
-                                  Target Weight (kgs)
-                                </label>
-                                <input
-                                  type="number"
-                                  name="targetWeight"
-                                  id="targetWeight"
-                                  defaultValue="165"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div className="sm:col-span-2">
-                                <label htmlFor="weightGoalDate" className="block text-xs font-medium text-gray-700">
-                                  Target Date
-                                </label>
-                                <input
-                                  type="date"
-                                  name="weightGoalDate"
-                                  id="weightGoalDate"
-                                  defaultValue="2025-09-30"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div className="sm:col-span-2 pt-2">
-                                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                  <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '55%' }}></div>
-                                </div>
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                  <span>88 kgs</span>
-                                  <span>Current: 92 kgs</span>
-                                  <span>Goal: 88kgs</span>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                        
-                        {/* Strength Goal */}
-                        <div className="border border-gray-200 rounded-md p-4">
-                          <div 
-                            className="flex justify-between items-center cursor-pointer"
-                            onClick={() => toggleSection('strengthGoal')}
-                          >
-                            <h3 className="text-sm font-medium text-gray-900">Strength Goal</h3>
-                            {expandedSection === 'strengthGoal' ? (
-                              <ChevronUp className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            )}
-                          </div>
-                          
-                          {expandedSection === 'strengthGoal' && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-4 space-y-4"
-                            >
-                              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <div>
-                                  <label htmlFor="benchPress" className="block text-xs font-medium text-gray-700">
-                                    Bench Press (kgs)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    name="benchPress"
-                                    id="benchPress"
-                                    defaultValue="100"
-                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label htmlFor="squat" className="block text-xs font-medium text-gray-700">
-                                    Squat (kgs)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    name="squat"
-                                    id="squat"
-                                    defaultValue="150"
-                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <label htmlFor="deadlift" className="block text-xs font-medium text-gray-700">
-                                    Deadlift (kgs)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    name="deadlift"
-                                    id="deadlift"
-                                    defaultValue="150"
-                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                  />
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <label htmlFor="strengthGoalDate" className="block text-xs font-medium text-gray-700">
-                                  Target Date
-                                </label>
-                                <input
-                                  type="date"
-                                  name="strengthGoalDate"
-                                  id="strengthGoalDate"
-                                  defaultValue="2025-11-30"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-700">Bench Press Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">96/100 kgs (96%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '96%' }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-700">Squat Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">120/150 kgs (90%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '90%' }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-700">Deadlift Progress</span>
-                                  <span className="text-xs font-medium text-blue-600">150/170 kgs (89%)</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '89%' }}></div>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                        
-                        {/* Body Composition Goal */}
-                        <div className="border border-gray-200 rounded-md p-4">
-                          <div 
-                            className="flex justify-between items-center cursor-pointer"
-                            onClick={() => toggleSection('bodyCompGoal')}
-                          >
-                            <h3 className="text-sm font-medium text-gray-900">Body Composition Goal</h3>
-                            {expandedSection === 'bodyCompGoal' ? (
-                              <ChevronUp className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            )}
-                          </div>
-                          
-                          {expandedSection === 'bodyCompGoal' && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
-                            >
-                              <div>
-                                <label htmlFor="currentBodyFat" className="block text-xs font-medium text-gray-700">
-                                  Current Body Fat %
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  name="currentBodyFat"
-                                  id="currentBodyFat"
-                                  defaultValue="19"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label htmlFor="targetBodyFat" className="block text-xs font-medium text-gray-700">
-                                  Target Body Fat %
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  name="targetBodyFat"
-                                  id="targetBodyFat"
-                                  defaultValue="15"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label htmlFor="currentMuscleMass" className="block text-xs font-medium text-gray-700">
-                                  Current Muscle Mass (kgs)
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  name="currentMuscleMass"
-                                  id="currentMuscleMass"
-                                  defaultValue="143"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label htmlFor="targetMuscleMass" className="block text-xs font-medium text-gray-700">
-                                  Target Muscle Mass (kgs)
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  name="targetMuscleMass"
-                                  id="targetMuscleMass"
-                                  defaultValue="145"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              
-                              <div className="sm:col-span-2">
-                                <label htmlFor="bodyCompGoalDate" className="block text-xs font-medium text-gray-700">
-                                  Target Date
-                                </label>
-                                <input
-                                  type="date"
-                                  name="bodyCompGoalDate"
-                                  id="bodyCompGoalDate"
-                                  defaultValue="2025-10-31"
-                                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
                     <div>
                       <button
                         type="submit"
@@ -870,136 +543,6 @@ const ProfilePage: React.FC = () => {
                       >
                         <Save className="mr-2 -ml-1 h-5 w-5" />
                         Save Goals
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-            
-            {/* Health Data */}
-            {activeSection === 'healthData' && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">Health Information</h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Provide health details to help personalize your experience.
-                  </p>
-                </div>
-                
-                <div className="p-6">
-                  <form className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="allergies" className="block text-sm font-medium text-gray-700">
-                          Food Allergies/Intolerances
-                        </label>
-                        <textarea
-                          id="allergies"
-                          name="allergies"
-                          rows={3}
-                          defaultValue={userData.allergies.join(', ')}
-                          className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                          placeholder="List any food allergies or intolerances"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="medicalConditions" className="block text-sm font-medium text-gray-700">
-                          Medical Conditions
-                        </label>
-                        <textarea
-                          id="medicalConditions"
-                          name="medicalConditions"
-                          rows={3}
-                          defaultValue={userData.medicalConditions.join(', ')}
-                          className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                          placeholder="List any medical conditions that might affect your fitness plan"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="sleepAverage" className="block text-sm font-medium text-gray-700">
-                          Average Sleep Duration
-                        </label>
-                        <select
-                          id="sleepAverage"
-                          name="sleepAverage"
-                          defaultValue={userData.sleepAverage}
-                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >
-                          <option>Less than 5 hours</option>
-                          <option>5-6 hours</option>
-                          <option>6-7 hours</option>
-                          <option>7 hours</option>
-                          <option>7-8 hours</option>
-                          <option>8-9 hours</option>
-                          <option>More than 9 hours</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="stressLevel" className="block text-sm font-medium text-gray-700">
-                          Stress Level
-                        </label>
-                        <select
-                          id="stressLevel"
-                          name="stressLevel"
-                          defaultValue={userData.stressLevel}
-                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        >
-                          <option>Low</option>
-                          <option>Moderate</option>
-                          <option>High</option>
-                          <option>Very high</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <span className="block text-sm font-medium text-gray-700 mb-2">
-                        Physical Limitations or Injuries
-                      </span>
-                      <div className="space-y-2">
-                        {['Shoulder', 'Back', 'Knee', 'Hip', 'Ankle', 'Wrist', 'Neck', 'None'].map((area) => (
-                          <div key={area} className="flex items-center">
-                            <input
-                              id={`injury-${area}`}
-                              name="injuries"
-                              type="checkbox"
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              defaultChecked={area === 'None'}
-                            />
-                            <label htmlFor={`injury-${area}`} className="ml-2 block text-sm text-gray-700">
-                              {area}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="injuryDetails" className="block text-sm font-medium text-gray-700">
-                        Injury Details
-                      </label>
-                      <textarea
-                        id="injuryDetails"
-                        name="injuryDetails"
-                        rows={3}
-                        className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                        placeholder="Provide details about any injuries or limitations"
-                      />
-                    </div>
-                    
-                    <div>
-                      <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Save className="mr-2 -ml-1 h-5 w-5" />
-                        Save Health Information
                       </button>
                     </div>
                   </form>
