@@ -315,22 +315,88 @@ const MealPlanPage: React.FC = () => {
     fetchProfileData();
   }, []);
 
-  // Load saved meal plan from localStorage on mount
+  // Load meal plan from database first, fallback to localStorage
   useEffect(() => {
-    const savedMealPlan = localStorage.getItem('mealPlan');
-    if (savedMealPlan) {
+    const loadMealPlan = async () => {
       try {
-        setMealPlan(JSON.parse(savedMealPlan));
-      } catch (err) {
-        console.error('Error parsing saved meal plan:', err);
+        // Clean up old non-user-specific cache first
+        localStorage.removeItem('mealPlan');
+        
+        // Try to fetch from database first
+        const response = await axios.get('/meal-plans/');
+        if (response.data && response.data.results && response.data.results.length > 0) {
+          // Get the most recent meal plan
+          const latestPlan = response.data.results[0];
+          setMealPlan(latestPlan);
+          console.log(`Loaded meal plan from database for user ${response.data.debug_info?.username} (ID: ${response.data.debug_info?.user_id})`);
+          console.log(`Plan: ${latestPlan.name}, Created: ${latestPlan.created_at}`);
+          
+          // Update localStorage with database data
+          const token = localStorage.getItem('access_token');
+          if (token) {
+            const userKey = `mealPlan_${btoa(token).slice(0, 16)}`;
+            localStorage.setItem(userKey, JSON.stringify(latestPlan));
+          }
+          return;
+        }
+        
+        // If no database plan, try localStorage
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          const userKey = `mealPlan_${btoa(token).slice(0, 16)}`;
+          const savedMealPlan = localStorage.getItem(userKey);
+          if (savedMealPlan) {
+            try {
+              const parsed = JSON.parse(savedMealPlan);
+              if (parsed.debug_info?.user_id) {
+                setMealPlan(parsed);
+                console.log(`Loaded cached meal plan for user ${parsed.debug_info.username} (ID: ${parsed.debug_info.user_id})`);
+              } else {
+                localStorage.removeItem(userKey);
+                console.log('Cleared old format meal plan cache');
+              }
+            } catch (err) {
+              console.error('Error parsing saved meal plan:', err);
+              localStorage.removeItem(userKey);
+            }
+          }
+        }
+        
+        console.log('No existing meal plan found - user needs to generate one');
+      } catch (error) {
+        console.error('Error loading meal plan from database:', error);
+        
+        // Fallback to localStorage if database fails
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          const userKey = `mealPlan_${btoa(token).slice(0, 16)}`;
+          const savedMealPlan = localStorage.getItem(userKey);
+          if (savedMealPlan) {
+            try {
+              const parsed = JSON.parse(savedMealPlan);
+              if (parsed.debug_info?.user_id) {
+                setMealPlan(parsed);
+                console.log(`Fallback: Loaded cached meal plan for user ${parsed.debug_info.username}`);
+              }
+            } catch (err) {
+              console.error('Error parsing cached meal plan:', err);
+            }
+          }
+        }
       }
-    }
+    };
+    
+    loadMealPlan();
   }, []);
 
-  // Save meal plan to localStorage whenever it changes
+  // Save meal plan to localStorage whenever it changes (user-specific)
   useEffect(() => {
-    if (mealPlan) {
-      localStorage.setItem('mealPlan', JSON.stringify(mealPlan));
+    const token = localStorage.getItem('access_token');
+    if (mealPlan && token) {
+      // Create user-specific storage key using token hash
+      const userKey = `mealPlan_${btoa(token).slice(0, 16)}`;
+      localStorage.setItem(userKey, JSON.stringify(mealPlan));
+      console.log(`Saved meal plan to user-specific cache: ${userKey}`);
     }
   }, [mealPlan]);
   
@@ -377,8 +443,14 @@ const MealPlanPage: React.FC = () => {
       
       if (response.data) {
         setMealPlan(response.data);
-        // Save to localStorage
-        localStorage.setItem('mealPlan', JSON.stringify(response.data));
+        
+        // Save to user-specific localStorage
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          const userKey = `mealPlan_${btoa(token).slice(0, 16)}`;
+          localStorage.setItem(userKey, JSON.stringify(response.data));
+          console.log(`Generated and saved new meal plan for user ${response.data.debug_info?.username || 'unknown'}`);
+        }
         
         // Expand the first day by default
         if (response.data.meal_times?.length > 0) {

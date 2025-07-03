@@ -13,27 +13,43 @@ class MealPlanGenerator:
         self.calorie_model = None
         self.macro_model = None
         self.meal_timing_model = None
+        self.meal_composition_model = None
         self.scaler = None
+        
+        # Deep learning models
+        self.deep_calorie_model = None
+        self.deep_macro_model = None
+        self.deep_meal_composition_model = None
+        self.deep_scaler = None
         
         # Load ML models and scaler
         try:
             model_dir = os.path.join(os.path.dirname(__file__), 'models')
             
-            # Load scaler (try both scaler files)
+            # Try to load deep learning models first (preferred)
             try:
-                self.scaler = joblib.load(os.path.join(model_dir, 'feature_scaler.joblib'))
-            except:
-                self.scaler = joblib.load(os.path.join(model_dir, 'scaler.joblib'))
-            
-            # Load models
-            self.calorie_model = joblib.load(os.path.join(model_dir, 'calorie_model.joblib'))
-            self.macro_model = joblib.load(os.path.join(model_dir, 'macro_model.joblib'))
-            self.meal_timing_model = joblib.load(os.path.join(model_dir, 'meal_timing_model.joblib'))
-            self.meal_composition_model = joblib.load(os.path.join(model_dir, 'meal_composition_model.joblib'))
-            
-            print("Successfully loaded all ML models and scaler")
+                import tensorflow as tf
+                self.deep_calorie_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_calorie_model.h5'))
+                self.deep_macro_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_macro_model.h5'))
+                self.deep_meal_composition_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_meal_composition_model.h5'))
+                self.deep_scaler = joblib.load(os.path.join(model_dir, 'deep_scaler.joblib'))
+                print("Successfully loaded deep learning models!")
+            except Exception as deep_e:
+                print(f"Deep learning models not available: {str(deep_e)}")
+                
+                # Fallback to traditional ML models
+                try:
+                    self.scaler = joblib.load(os.path.join(model_dir, 'feature_scaler.joblib'))
+                except:
+                    self.scaler = joblib.load(os.path.join(model_dir, 'scaler.joblib'))
+                
+                self.calorie_model = joblib.load(os.path.join(model_dir, 'calorie_model.joblib'))
+                self.macro_model = joblib.load(os.path.join(model_dir, 'macro_model.joblib'))
+                self.meal_timing_model = joblib.load(os.path.join(model_dir, 'meal_timing_model.joblib'))
+                self.meal_composition_model = joblib.load(os.path.join(model_dir, 'meal_composition_model.joblib'))
+                print("Successfully loaded traditional ML models")
         except Exception as e:
-            print(f"Warning: Could not load ML models - {str(e)}")
+            print(f"Warning: Could not load any ML models - {str(e)}")
             print("Falling back to rule-based calculations")
         
         # Comprehensive food database with nutritional information
@@ -98,7 +114,19 @@ class MealPlanGenerator:
                 'black_eyed_peas': {'calories': 160, 'protein': 13, 'carbs': 35, 'fat': 0.9},
                 'mung_beans': {'calories': 212, 'protein': 14, 'carbs': 39, 'fat': 0.8},
                 'pea_protein': {'calories': 120, 'protein': 24, 'carbs': 2, 'fat': 2},
-                'tvp': {'calories': 160, 'protein': 24, 'carbs': 10, 'fat': 0.5}
+                'tvp': {'calories': 160, 'protein': 24, 'carbs': 10, 'fat': 0.5},
+                
+                # Additional Proteins
+                'hemp_protein': {'calories': 120, 'protein': 15, 'carbs': 8, 'fat': 3},
+                'rice_protein': {'calories': 110, 'protein': 24, 'carbs': 2, 'fat': 1},
+                'soy_protein_isolate': {'calories': 95, 'protein': 23, 'carbs': 0, 'fat': 0.5},
+                'bone_broth_protein': {'calories': 90, 'protein': 20, 'carbs': 0, 'fat': 0},
+                'collagen_protein': {'calories': 70, 'protein': 18, 'carbs': 0, 'fat': 0},
+                'spirulina': {'calories': 290, 'protein': 57, 'carbs': 24, 'fat': 8},
+                'nutritional_yeast': {'calories': 60, 'protein': 8, 'carbs': 5, 'fat': 1},
+                'hemp_hearts': {'calories': 170, 'protein': 10, 'carbs': 2.5, 'fat': 14},
+                'organ_meats': {'calories': 175, 'protein': 26, 'carbs': 4, 'fat': 6},
+                'bone_marrow': {'calories': 786, 'protein': 7, 'carbs': 0, 'fat': 84}
             },
             'carbs': {
                 # Grains
@@ -150,7 +178,21 @@ class MealPlanGenerator:
                 'muesli': {'calories': 289, 'protein': 8, 'carbs': 61, 'fat': 4},
                 'granola': {'calories': 471, 'protein': 10, 'carbs': 64, 'fat': 20},
                 'cream_of_wheat': {'calories': 160, 'protein': 5, 'carbs': 34, 'fat': 0.5},
-                'cream_of_rice': {'calories': 130, 'protein': 2.5, 'carbs': 28, 'fat': 0}
+                'cream_of_rice': {'calories': 130, 'protein': 2.5, 'carbs': 28, 'fat': 0},
+                
+                # Additional Grains & Carbs
+                'black_rice': {'calories': 160, 'protein': 4.9, 'carbs': 34, 'fat': 1.8},
+                'red_rice': {'calories': 405, 'protein': 7.9, 'carbs': 86, 'fat': 2.2},
+                'cauliflower_rice': {'calories': 25, 'protein': 2, 'carbs': 5, 'fat': 0.3},
+                'shirataki_noodles': {'calories': 20, 'protein': 1, 'carbs': 4, 'fat': 0},
+                'konjac_noodles': {'calories': 10, 'protein': 0, 'carbs': 3, 'fat': 0},
+                'kelp_noodles': {'calories': 6, 'protein': 0.2, 'carbs': 1.4, 'fat': 0},
+                'palmini_noodles': {'calories': 20, 'protein': 2, 'carbs': 4, 'fat': 0},
+                'zucchini_noodles': {'calories': 20, 'protein': 2.7, 'carbs': 4, 'fat': 0.4},
+                'spaghetti_squash': {'calories': 28, 'protein': 0.6, 'carbs': 6.9, 'fat': 0.3},
+                'plantain': {'calories': 122, 'protein': 1.3, 'carbs': 31.9, 'fat': 0.4},
+                'yuca': {'calories': 160, 'protein': 1.4, 'carbs': 38, 'fat': 0.3},
+                'water_chestnuts': {'calories': 97, 'protein': 1.4, 'carbs': 24, 'fat': 0.1}
             },
             'fats': {
                 # Nuts
@@ -345,7 +387,7 @@ class MealPlanGenerator:
         numerical_features = np.array([
             float(user_data.get('weight', 70)), 
             float(user_data.get('height', 170)),
-            float(user_data.get('age', 30)),
+            float(user_data.get('age', 25)),
             float(user_data.get('body_fat_pct', 20)),
             float(user_data.get('blood_pressure_systolic', 120)),
             float(user_data.get('blood_pressure_diastolic', 80)),
@@ -422,12 +464,75 @@ class MealPlanGenerator:
         
         return X
 
-    def predict_calories(self, user_data: Dict[str, Any]) -> float:
-        """Predict daily calorie needs using ML model or traditional method"""
-        features = self.preprocess_user_data(user_data)
+    def prepare_deep_features(self, user_data: Dict[str, Any]) -> np.ndarray:
+        """Prepare features for deep learning models"""
+        # Activity level mapping
+        activity_mapping = {
+            'sedentary': 0, 'light': 1, 'moderate': 2, 'active': 3, 'very_active': 4
+        }
         
-        if self.calorie_model is not None:
-            # Use ML model for prediction
+        # Goal mapping
+        goal_mapping = {
+            'weight_loss': 0, 'maintenance': 1, 'muscle_gain': 2
+        }
+        
+        # Fitness level mapping
+        fitness_mapping = {
+            'beginner': 0, 'intermediate': 1, 'advanced': 2
+        }
+        
+        # Gender mapping
+        gender_value = 1 if user_data.get('gender', 'male').lower() == 'male' else 0
+        
+        # Prepare feature vector
+        features = np.array([
+            float(user_data.get('weight', 70)),
+            float(user_data.get('height', 170)),
+            float(user_data.get('age', 25)),
+            gender_value,
+            activity_mapping.get(user_data.get('activity_level', 'moderate'), 2),
+            goal_mapping.get(user_data.get('goal', 'maintenance'), 1),
+            fitness_mapping.get(user_data.get('fitness_level', 'intermediate'), 1),
+            float(user_data.get('body_fat_pct', 20)),
+            float(user_data.get('blood_pressure_systolic', 120)),
+            float(user_data.get('blood_pressure_diastolic', 80)),
+            float(user_data.get('resting_heart_rate', 70)),
+            float(user_data.get('hours_sleep', 7)),
+            1 if user_data.get('vegetarian', False) else 0,
+            1 if user_data.get('vegan', False) else 0,
+            1 if 'Gluten-Free' in user_data.get('dietary_preferences', []) else 0,
+            1 if 'Dairy-Free' in user_data.get('dietary_preferences', []) else 0,
+            float(user_data.get('meals_per_day', 4))
+        ])
+        
+        return features
+
+    def predict_calories(self, user_data: Dict[str, Any]) -> float:
+        """Predict daily calorie needs using deep learning, ML model or traditional method"""
+        # Validate required user data
+        required_fields = ['weight', 'height', 'age', 'gender', 'activity_level']
+        for field in required_fields:
+            if field not in user_data or user_data[field] is None:
+                raise ValueError(f"Missing required field for calorie calculation: {field}")
+        
+        # Check for default values that indicate incomplete profile
+        if (user_data['weight'] == 70.0 and user_data['height'] == 170.0 and user_data['age'] == 18):
+            print("WARNING: User appears to be using default profile values. Meal plan calories may not be accurate.")
+        
+        # Try deep learning model first
+        if self.deep_calorie_model is not None and self.deep_scaler is not None:
+            # Prepare features for deep learning model
+            features = self.prepare_deep_features(user_data)
+            features_scaled = self.deep_scaler.transform(features.reshape(1, -1))
+            
+            # Predict using deep learning model
+            predicted_calories = float(self.deep_calorie_model.predict(features_scaled, verbose=0)[0][0])
+            print(f"Deep Learning Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={user_data.get('goal', 'maintenance')}")
+            return max(1200, predicted_calories)  # Ensure minimum safe calorie intake
+        
+        elif self.calorie_model is not None:
+            # Use traditional ML model for prediction
+            features = self.preprocess_user_data(user_data)
             predicted_calories = self.calorie_model.predict(features)[0]
             # Add goal-based adjustment
             goal_adjustments = {
@@ -436,16 +541,27 @@ class MealPlanGenerator:
                 'muscle_gain': 500
             }
             predicted_calories += goal_adjustments.get(user_data.get('goal', 'maintenance').lower(), 0)
-            return predicted_calories
+            print(f"ML Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={user_data.get('goal', 'maintenance')}")
+            return max(1200, predicted_calories)  # Ensure minimum safe calorie intake
         else:
             # Fallback to traditional TDEE calculation
-            return self.calculate_tdee(
-                user_data.get('weight', 70),
-                user_data.get('height', 170),
-                user_data.get('age', 25),
-                user_data.get('gender', 'male'),
-                user_data.get('activity_level', 'moderate')
+            tdee_calories = self.calculate_tdee(
+                user_data['weight'],
+                user_data['height'], 
+                user_data['age'],
+                user_data['gender'],
+                user_data['activity_level']
             )
+            
+            # Apply goal-based adjustments
+            goal_adjustments = {
+                'weight_loss': -500,
+                'maintenance': 0,
+                'muscle_gain': 500
+            }
+            final_calories = tdee_calories + goal_adjustments.get(user_data.get('goal', 'maintenance').lower(), 0)
+            print(f"TDEE calculated calories: {final_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, activity={user_data['activity_level']}, goal={user_data.get('goal', 'maintenance')}")
+            return max(1200, final_calories)  # Ensure minimum safe calorie intake
 
     def predict_macros(self, calories: float, user_data: Dict[str, Any]) -> Dict[str, float]:
         """Predict macro distribution using ML model or traditional method"""
@@ -719,67 +835,114 @@ class MealPlanGenerator:
         meal_type = preferences.get('meal_type', 'breakfast')
         meal_composition = self.predict_meal_composition(meal_type, preferences)
         
-        # Select and portion foods
+        # Select foods for meal with limited quantities per category
         selected_foods = self._select_foods_for_meal(meal_type, meal_composition)
-        portions = self.adjust_portions(selected_foods, {
-            'protein': meal_macros['protein'],
-            'carbs': meal_macros['carbs'],
-            'fat': meal_macros['fat']
-        })
         
-        # Add foods to meal
+        # Calculate portions more accurately based on target calories
+        total_target_calories = target_calories
+        current_calories = 0
+        
+        # Add foods to meal with better portion control
         for category, foods in selected_foods.items():
-            for name, nutrients in foods.items():
-                portion = portions.get(name, 100)  # default to 100g if not specified
+            # Calculate how many calories this category should contribute
+            category_target_calories = total_target_calories * meal_composition.get(category, 0)
+            
+            if category_target_calories > 0 and foods:
+                # Distribute calories evenly among foods in this category
+                calories_per_food = category_target_calories / len(foods)
                 
-                # Determine appropriate unit and conversion factor
-                unit = 'g'
-                conversion_factor = 1
-                
-                # Handle special cases
-                if 'egg' in name.lower():
-                    unit = 'piece'
-                    conversion_factor = 50  # 50g per egg
-                elif 'protein' in name.lower() and 'whey' in name.lower():
-                    unit = 'scoop'
-                    conversion_factor = 30  # 30g per scoop
-                elif 'bread' in name.lower():
-                    unit = 'slice'
-                    conversion_factor = 30  # 30g per slice
-                elif 'oil' in name.lower():
-                    unit = 'tsp'
-                    conversion_factor = 5  # 5g per teaspoon
-                
-                # Calculate display quantity
-                display_quantity = portion / conversion_factor if conversion_factor > 1 else portion
-                
-                # Calculate scaled nutrition values
-                scale_factor = portion / 100
-                food_item = {
-                    'name': name.replace('_', ' ').title(),
-                    'quantity': round(display_quantity, 1),
-                    'unit': unit,
-                    'calories': round(nutrients['calories'] * scale_factor, 1),
-                    'protein': round(nutrients['protein'] * scale_factor, 1),
-                    'carbs': round(nutrients['carbs'] * scale_factor, 1),
-                    'fat': round(nutrients['fat'] * scale_factor, 1)
-                }
-                
-                # Ensure no zero values in nutrition
-                for key in ['calories', 'protein', 'carbs', 'fat']:
-                    if food_item[key] == 0 and nutrients[key.replace('fat', 'fat')] > 0:
-                        food_item[key] = round(nutrients[key.replace('fat', 'fat')] * scale_factor, 1)
-                    if food_item[key] == 0:
-                        food_item[key] = 0.1  # Set minimum value to avoid zero
-                
-                # Add to meal
-                meal['foods'].append(food_item)
-                
-                # Update meal nutrition totals
-                meal['nutrition']['calories'] += food_item['calories']
-                meal['nutrition']['protein'] += food_item['protein']
-                meal['nutrition']['carbs'] += food_item['carbs']
-                meal['nutrition']['fat'] += food_item['fat']
+                for name, nutrients in foods.items():
+                    if current_calories >= total_target_calories * 1.05:  # Stop if we exceed target by 5%
+                        break
+                        
+                    # Calculate portion needed to achieve target calories for this food
+                    if nutrients['calories'] > 0:
+                        target_portion = (calories_per_food / nutrients['calories']) * 100
+                        # Add a 15% buffer to ensure we reach targets
+                        target_portion *= 1.15
+                    else:
+                        target_portion = 50  # fallback
+                    
+                    # Apply minimum and maximum portion constraints
+                    min_portion = 30   # minimum 30g (increased)
+                    max_portion = 300  # maximum 300g (increased)
+                    
+                    # Adjust limits for specific food types
+                    if 'egg' in name.lower():
+                        min_portion = 50   # 1 egg minimum
+                        max_portion = 200  # 4 eggs maximum (increased)
+                    elif 'protein' in name.lower() and 'whey' in name.lower():
+                        min_portion = 30   # minimum 30g scoop (1 full scoop)
+                        max_portion = 75   # maximum 75g (2.5 scoops) (increased)
+                    elif 'oil' in name.lower():
+                        min_portion = 10   # 2 tsp minimum (increased for more fat)
+                        max_portion = 25   # 5 tsp maximum (increased)
+                    elif any(veg in name.lower() for veg in ['spinach', 'lettuce', 'broccoli', 'cucumber']):
+                        min_portion = 50   # vegetables can be larger
+                        max_portion = 200  # (increased)
+                    elif any(carb in name.lower() for carb in ['rice', 'pasta', 'potato', 'bread', 'oats']):
+                        min_portion = 40   # carbs need decent portions
+                        max_portion = 250  # allow larger carb servings
+                    
+                    # Constrain portion to limits
+                    portion = max(min_portion, min(target_portion, max_portion))
+                    
+                    # Determine appropriate unit and conversion factor
+                    unit = 'g'
+                    conversion_factor = 1
+                    
+                    # Handle special cases
+                    if 'egg' in name.lower():
+                        unit = 'piece'
+                        conversion_factor = 50  # 50g per egg
+                        portion = max(50, round(portion / 50) * 50)  # Round to whole eggs
+                    elif 'protein' in name.lower() and 'whey' in name.lower():
+                        unit = 'scoop'
+                        conversion_factor = 30  # 30g per scoop
+                        portion = max(25, round(portion / 25) * 25)  # Round to quarter scoops
+                    elif 'bread' in name.lower():
+                        unit = 'slice'
+                        conversion_factor = 30  # 30g per slice
+                        portion = max(30, round(portion / 30) * 30)  # Round to whole slices
+                    elif 'oil' in name.lower():
+                        unit = 'tsp'
+                        conversion_factor = 5  # 5g per teaspoon
+                        portion = max(5, round(portion / 5) * 5)  # Round to whole teaspoons
+                    else:
+                        portion = round(portion / 5) * 5  # Round to nearest 5g
+                    
+                    # Calculate display quantity
+                    display_quantity = portion / conversion_factor if conversion_factor > 1 else portion
+                    
+                    # Calculate scaled nutrition values
+                    scale_factor = portion / 100
+                    food_item = {
+                        'name': name.replace('_', ' ').title(),
+                        'quantity': round(display_quantity, 1),
+                        'unit': unit,
+                        'calories': round(nutrients['calories'] * scale_factor, 1),
+                        'protein': round(nutrients['protein'] * scale_factor, 1),
+                        'carbs': round(nutrients['carbs'] * scale_factor, 1),
+                        'fat': round(nutrients['fat'] * scale_factor, 1)
+                    }
+                    
+                    # Ensure no zero values in nutrition
+                    for key in ['calories', 'protein', 'carbs', 'fat']:
+                        if food_item[key] == 0 and nutrients[key] > 0:
+                            food_item[key] = round(nutrients[key] * scale_factor, 1)
+                        if food_item[key] == 0:
+                            food_item[key] = 0.1  # Set minimum value to avoid zero
+                    
+                    # Add to meal
+                    meal['foods'].append(food_item)
+                    
+                    # Update meal nutrition totals
+                    meal['nutrition']['calories'] += food_item['calories']
+                    meal['nutrition']['protein'] += food_item['protein']
+                    meal['nutrition']['carbs'] += food_item['carbs']
+                    meal['nutrition']['fat'] += food_item['fat']
+                    
+                    current_calories += food_item['calories']
         
         return meal
 
@@ -839,25 +1002,12 @@ class MealPlanGenerator:
                 'meal_type': meal_name.replace('1', '').replace('2', '').replace('snack', 'snack'),
                 'meal_composition': meal_composition,
                 'target_calories': daily_calories * details['ratio'],
-                'target_protein': min(daily_macros['protein'] * details['ratio'], 50),
+                'target_protein': daily_macros['protein'] * details['ratio'],
                 'target_carbs': daily_macros['carbs'] * details['ratio'],
                 'target_fat': daily_macros['fat'] * details['ratio']
             }
             
             generated_meal = self.generate_meal(meal_preferences['target_calories'], meal_preferences)
-            
-            # Cap protein in the meal to 50g
-            if generated_meal['nutrition']['protein'] > 50:
-                scale = 50 / generated_meal['nutrition']['protein']
-                for food in generated_meal['foods']:
-                    food['protein'] = round(food['protein'] * scale, 1)
-                    food['calories'] = round(food['calories'] * scale, 1)
-                    food['carbs'] = round(food['carbs'] * scale, 1)
-                    food['fat'] = round(food['fat'] * scale, 1)
-                generated_meal['nutrition']['protein'] = 50
-                generated_meal['nutrition']['calories'] = round(generated_meal['nutrition']['calories'] * scale, 1)
-                generated_meal['nutrition']['carbs'] = round(generated_meal['nutrition']['carbs'] * scale, 1)
-                generated_meal['nutrition']['fat'] = round(generated_meal['nutrition']['fat'] * scale, 1)
             
             # Add timing information
             daily_plan['meals'][meal_name] = {
@@ -878,14 +1028,21 @@ class MealPlanGenerator:
 
     def generate_meal_plan(self, user_data: Dict[str, Any], duration_days: int = 7) -> Dict[str, Any]:
         """Generate a complete meal plan based on user profile and preferences using ML models"""
+        print(f"\n=== Generating Meal Plan ===")
+        print(f"User Data: Weight={user_data.get('weight')}kg, Height={user_data.get('height')}cm, Age={user_data.get('age')}, Gender={user_data.get('gender')}")
+        print(f"Activity Level: {user_data.get('activity_level')}, Goal: {user_data.get('goal')}")
+        
         # Filter foods based on preferences first
         self.filter_foods_by_preferences(user_data)
+        print(f"Applied dietary filters: vegetarian={user_data.get('vegetarian')}, vegan={user_data.get('vegan')}, allergies={user_data.get('allergies', [])}")
         
         # Calculate daily caloric needs using ML model
         daily_calories = self.predict_calories(user_data)
+        print(f"Calculated daily calories: {daily_calories:.0f}")
         
         # Calculate macros using ML model
         daily_macros = self.predict_macros(daily_calories, user_data)
+        print(f"Calculated macros: Protein={daily_macros['protein']:.0f}g, Carbs={daily_macros['carbs']:.0f}g, Fat={daily_macros['fat']:.0f}g")
 
         meal_plan = {
             'user_data': user_data,
@@ -965,17 +1122,23 @@ class MealPlanGenerator:
         meal_type_lower = meal_type.lower().replace('1', '').replace('2', '') 
         food_groups = meal_foods.get(meal_type_lower, meal_foods['snack'])
         
-        # Select foods based on composition
+        # Select foods based on composition (more conservative)
         for category, ratio in meal_composition.items():
-            if ratio > 0 and category in food_groups:
+            if ratio > 0.05 and category in food_groups:  # Only include if ratio > 5%
                 available_foods = {
                     k: v for k, v in self.food_database.get(category, {}).items()
                     if k in food_groups[category]
                 }
                 
-                # Select 1-2 items based on ratio
-                num_items = 2 if ratio > 0.3 else 1
-                if available_foods:
+                # Select fewer items - usually just 1 item per category
+                if ratio > 0.4:
+                    num_items = 2  # Only for dominant categories
+                elif ratio > 0.15:
+                    num_items = 1  # Standard selection
+                else:
+                    num_items = 1 if ratio > 0.08 else 0  # Small portions or skip
+                
+                if available_foods and num_items > 0:
                     selected = random.sample(list(available_foods.items()),
                                           min(num_items, len(available_foods)))
                     selected_foods[category].update(dict(selected))

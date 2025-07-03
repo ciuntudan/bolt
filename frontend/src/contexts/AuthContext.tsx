@@ -99,6 +99,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const refreshToken = localStorage.getItem('refresh_token');
       const accessToken = localStorage.getItem('access_token');
       
+      // Clean up user-specific meal plan cache before logout
+      if (accessToken) {
+        const userKey = `mealPlan_${btoa(accessToken).slice(0, 16)}`;
+        localStorage.removeItem(userKey);
+        console.log('Cleared user-specific meal plan cache on logout');
+      }
+      
       // Only attempt to call logout endpoint if we have both tokens
       if (refreshToken && accessToken) {
         try {
@@ -118,6 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Logout error:', error);
       // Ensure we still clean up even if something fails
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken) {
+        const userKey = `mealPlan_${btoa(accessToken).slice(0, 16)}`;
+        localStorage.removeItem(userKey);
+      }
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       delete axios.defaults.headers.common['Authorization'];

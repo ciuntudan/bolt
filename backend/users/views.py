@@ -585,7 +585,9 @@ class UserMealPlanListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        return UserMealPlan.objects.filter(user=self.request.user, is_active=True)
+        queryset = UserMealPlan.objects.filter(user=self.request.user, is_active=True).order_by('-created_at')
+        logger.info(f"User {self.request.user.username} (ID: {self.request.user.id}) querying meal plans. Found {queryset.count()} active plans.")
+        return queryset
     
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -593,7 +595,36 @@ class UserMealPlanListCreateView(generics.ListCreateAPIView):
         return UserMealPlanSerializer
     
     def perform_create(self, serializer):
+        logger.info(f"User {self.request.user.username} creating meal plan via ListCreateView")
         serializer.save(user=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Add debug info to list response - handle both paginated and non-paginated responses
+        debug_info = {
+            'user_id': request.user.id,
+            'username': request.user.username,
+            'query_timestamp': timezone.now().isoformat()
+        }
+        
+        if isinstance(response.data, dict):
+            # Paginated response
+            if 'results' in response.data:
+                debug_info['total_plans'] = len(response.data['results'])
+                response.data['debug_info'] = debug_info
+            else:
+                # Single dict response
+                debug_info['total_plans'] = 1
+                response.data['debug_info'] = debug_info
+        elif isinstance(response.data, list):
+            # Non-paginated list response - convert to dict format
+            debug_info['total_plans'] = len(response.data)
+            response.data = {
+                'results': response.data,
+                'debug_info': debug_info
+            }
+        
+        return response
 
 class UserMealPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -1053,19 +1084,30 @@ def complete_workout(request, workout_id):
 def generate_meal_plan(request):
     """Generate a personalized meal plan using AI."""
     try:
-        # Log incoming request data
-        logger.info(f"Generating meal plan with data: {request.data}")
+        # Log incoming request data with user info
+        logger.info(f"User {request.user.username} (ID: {request.user.id}) generating meal plan with data: {request.data}")
         
         # Get user profile data
         profile = request.user.profile
-        logger.info(f"User profile data: {profile.__dict__}")
+        logger.info(f"User {request.user.username} profile data: {profile.__dict__}")
         
-        # Prepare user data for meal plan generation
+        # Get the most recent weight from weight history if available, otherwise use profile weight
+        latest_weight_entry = WeightHistory.objects.filter(user=request.user).order_by('-date').first()
+        current_weight = float(latest_weight_entry.weight) if latest_weight_entry else float(profile.weight)
+        
+        # Get body fat from latest weight history if available
+        current_body_fat = latest_weight_entry.body_fat if latest_weight_entry and latest_weight_entry.body_fat else 20
+        
+        # Validate that we have actual user data, not just defaults
+        if profile.weight == 70.0 and profile.height == 170.0 and profile.age == 18:
+            logger.warning("User appears to be using default profile values. Meal plan may not be accurate.")
+        
+        # Prepare user data for meal plan generation with enhanced data collection
         user_data = {
-            'weight': float(profile.weight) if profile.weight else 70,
-            'height': float(profile.height) if profile.height else 170,
-            'age': profile.age if profile.age else 25,
-            'gender': profile.gender if profile.gender else 'male',
+            'weight': current_weight,
+            'height': float(profile.height),
+            'age': profile.age,
+            'gender': profile.gender,
             'activity_level': request.data.get('activity_level', 'moderate'),
             'goal': request.data.get('goal', 'maintenance'),
             'vegetarian': request.data.get('vegetarian', False),
@@ -1074,15 +1116,15 @@ def generate_meal_plan(request):
             'allergies': request.data.get('allergies', []),
             'excluded_foods': request.data.get('excluded_foods', []),
             'preferred_foods': request.data.get('preferred_foods', []),
-            'fitness_level': getattr(profile, 'fitness_level', 'intermediate'),
-            'body_fat_pct': 20,  # Default value
-            'blood_pressure_systolic': 120,  # Default value
-            'blood_pressure_diastolic': 80,  # Default value
-            'resting_heart_rate': 70,  # Default value
-            'hours_sleep': 7  # Default value
+            'fitness_level': profile.fitness_level,
+            'body_fat_pct': current_body_fat,
+            'blood_pressure_systolic': 120,  # Could be enhanced with actual user data
+            'blood_pressure_diastolic': 80,  # Could be enhanced with actual user data
+            'resting_heart_rate': 70,  # Could be enhanced with actual user data
+            'hours_sleep': 7  # Could be enhanced with actual user data
         }
         
-        logger.info(f"Prepared user data: {user_data}")
+        logger.info(f"User {request.user.username} prepared user data: {user_data}")
         
         # Initialize meal plan generator
         generator = MealPlanGenerator()
@@ -1093,20 +1135,25 @@ def generate_meal_plan(request):
             duration_days=request.data.get('duration_days', 7)
         )
         
-        logger.info("Successfully generated meal plan")
+        logger.info(f"Successfully generated meal plan for user {request.user.username} (ID: {request.user.id})")
         
-        # Create meal plan in database
+        # Mark any existing meal plans as inactive instead of deleting
+        UserMealPlan.objects.filter(user=request.user, is_active=True).update(is_active=False)
+        
+        # Create meal plan in database with correct targets and unique name
+        plan_name = f"{user_data['goal'].title()} Meal Plan - {timezone.now().strftime('%Y-%m-%d %H:%M')}"
         db_meal_plan = UserMealPlan.objects.create(
             user=request.user,
-            name=f"{user_data['goal'].title()} Meal Plan",
-            description=f"AI-generated meal plan for {user_data['goal']}",
+            name=plan_name,
+            description=f"AI-generated meal plan for {user_data['goal']} (User: {request.user.username})",
             goal=user_data['goal'],
-            calories_target=meal_plan['weekly_totals']['calories'],
-            protein_target=meal_plan['weekly_totals']['protein'],
-            carbs_target=meal_plan['weekly_totals']['carbs'],
-            fats_target=meal_plan['weekly_totals']['fat'],
+            calories_target=int(meal_plan['targets']['calories']),
+            protein_target=int(meal_plan['targets']['protein']),
+            carbs_target=int(meal_plan['targets']['carbs']),
+            fats_target=int(meal_plan['targets']['fat']),
             start_date=meal_plan['start_date'],
-            end_date=meal_plan['end_date']
+            end_date=meal_plan['end_date'],
+            is_active=True
         )
         
         # Create meal times and items for each day
@@ -1114,43 +1161,140 @@ def generate_meal_plan(request):
             'breakfast': 1,
             'lunch': 2,
             'dinner': 3,
-            'snack': 4
+            'snack': 4,
+            'snack1': 4,
+            'snack2': 5
         }
         
+        logger.info(f"Creating meal plan database entries for user {request.user.username} with {len(meal_plan['daily_plans'])} days")
+        
         for date, daily_plan in meal_plan['daily_plans'].items():
+            logger.info(f"Processing day {date} with {len(daily_plan['meals'])} meals for user {request.user.username}")
             for meal_name, meal_data in daily_plan['meals'].items():
                 meal_time = UserMealTime.objects.create(
                     meal_plan=db_meal_plan,
                     name=meal_name.title(),
                     time=_get_default_meal_time(meal_name),
-                    calories=meal_data['nutrition']['calories'],
-                    protein=meal_data['nutrition']['protein'],
-                    carbs=meal_data['nutrition']['carbs'],
-                    fats=meal_data['nutrition']['fat'],
+                    calories=int(meal_data['nutrition']['calories']),
+                    protein=int(meal_data['nutrition']['protein']),
+                    carbs=int(meal_data['nutrition']['carbs']),
+                    fats=int(meal_data['nutrition']['fat']),
                     date=date,
                     order=meal_order.get(meal_name.lower(), 1)
                 )
                 
                 # Create meal items
+                logger.info(f"Creating {len(meal_data['foods'])} food items for {meal_name} on {date} for user {request.user.username}")
                 for idx, food in enumerate(meal_data['foods'], start=1):
                     UserMealItem.objects.create(
                         meal_time=meal_time,
                         name=food['name'],
-                        quantity=food['quantity'],
+                        quantity=float(food['quantity']),
                         unit=food['unit'],
-                        calories=food['calories'],
-                        protein=food['protein'],
-                        carbs=food['carbs'],
-                        fats=food['fat'],
+                        calories=int(food['calories']),
+                        protein=float(food['protein']),
+                        carbs=float(food['carbs']),
+                        fats=float(food['fat']),
                         order=idx
                     )
         
         # Return the created meal plan
+        logger.info(f"Successfully saved meal plan {db_meal_plan.id} for user {request.user.username} to database")
         serializer = UserMealPlanSerializer(db_meal_plan)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_data = serializer.data
+        
+        # Add debug info to response
+        response_data['debug_info'] = {
+            'user_id': request.user.id,
+            'username': request.user.username,
+            'plan_id': db_meal_plan.id,
+            'created_at': db_meal_plan.created_at.isoformat(),
+            'is_active': db_meal_plan.is_active
+        }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
         
     except Exception as e:
         logger.error(f"Error generating meal plan: {str(e)}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_meal_plan_preview(request):
+    """Get a preview of what data will be used for meal plan generation."""
+    try:
+        # Get user profile data
+        profile = request.user.profile
+        
+        # Get the most recent weight from weight history if available
+        latest_weight_entry = WeightHistory.objects.filter(user=request.user).order_by('-date').first()
+        current_weight = float(latest_weight_entry.weight) if latest_weight_entry else float(profile.weight)
+        current_body_fat = latest_weight_entry.body_fat if latest_weight_entry and latest_weight_entry.body_fat else None
+        
+        # Check if profile is complete
+        is_complete = not (profile.weight == 70.0 and profile.height == 170.0 and profile.age == 18)
+        
+        # Calculate estimated calories using current data
+        user_data = {
+            'weight': current_weight,
+            'height': float(profile.height),
+            'age': profile.age,
+            'gender': profile.gender,
+            'activity_level': 'moderate',  # Default for preview
+            'goal': 'maintenance'  # Default for preview
+        }
+        
+        # Initialize meal plan generator to get calorie estimate
+        try:
+            generator = MealPlanGenerator()
+            estimated_calories = generator.predict_calories(user_data)
+        except Exception as e:
+            estimated_calories = None
+            logger.warning(f"Could not calculate calorie estimate: {str(e)}")
+        
+        preview_data = {
+            'profile_complete': is_complete,
+            'current_data': {
+                'weight': current_weight,
+                'weight_source': 'weight_history' if latest_weight_entry else 'profile',
+                'height': float(profile.height),
+                'age': profile.age,
+                'gender': profile.gender,
+                'fitness_level': profile.fitness_level,
+                'body_fat': current_body_fat,
+                'last_weight_update': latest_weight_entry.date.isoformat() if latest_weight_entry else None
+            },
+            'estimated_calories': {
+                'maintenance': estimated_calories,
+                'weight_loss': estimated_calories - 500 if estimated_calories else None,
+                'muscle_gain': estimated_calories + 500 if estimated_calories else None
+            } if estimated_calories else None,
+            'recommendations': []
+        }
+        
+        # Add recommendations based on profile completeness
+        if not is_complete:
+            preview_data['recommendations'].append(
+                "Please update your profile with accurate height, weight, and age for more precise meal plan calculations."
+            )
+        
+        if not latest_weight_entry:
+            preview_data['recommendations'].append(
+                "Consider adding your current weight to weight history for more accurate calculations."
+            )
+        
+        if current_body_fat is None:
+            preview_data['recommendations'].append(
+                "Adding body fat percentage to your weight history will improve meal plan accuracy."
+            )
+        
+        return Response(preview_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error getting meal plan preview: {str(e)}", exc_info=True)
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
