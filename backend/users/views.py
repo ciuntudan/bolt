@@ -899,12 +899,10 @@ class TrainingAchievementViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_training_plan(request):
-    """Generate a new training plan based on user preferences."""
+    """Generate a new training plan based on user preferences using TrainingPlanGenerator."""
     try:
-        # Validate input data
-        serializer = TrainingPlanSerializer(data={
-            'name': f"{request.data.get('goal', 'Custom').title()} Training Plan",
-            'description': "AI-generated training plan based on your preferences",
+        # Collect all relevant fields from the frontend
+        user_data = {
             'goal': request.data.get('goal', 'strength'),
             'difficulty': request.data.get('difficulty', 'intermediate'),
             'duration_weeks': request.data.get('duration_weeks', 8),
@@ -919,230 +917,80 @@ def generate_training_plan(request):
                 'type': ['running'],
                 'duration': 20,
                 'frequency': 2
-            })
-        })
-        
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create the training plan
-        training_plan = serializer.save(user=request.user)
-        
-        # Generate weeks and workouts based on preferences
-        days_per_week = request.data.get('days_per_week', 4)
-        preferred_duration = request.data.get('preferred_workout_duration', 60)
-        
-        # Calculate deload weeks (if enabled)
-        deload_weeks = []
-        if training_plan.include_deload_weeks:
-            deload_frequency = 4  # Deload every 4 weeks
-            deload_weeks = list(range(deload_frequency, training_plan.duration_weeks + 1, deload_frequency))
-        
-        # Generate training weeks
-        for week_num in range(1, training_plan.duration_weeks + 1):
-            is_deload = week_num in deload_weeks
-            intensity_multiplier = 0.6 if is_deload else 1.0
-            
-            week = TrainingWeek.objects.create(
-                training_plan=training_plan,
-                week_number=week_num,
-                name=f"Week {week_num}" + (" (Deload)" if is_deload else ""),
-                description=generate_week_description(training_plan.goal, is_deload)
-            )
-            
-            # Generate workouts for each training day
-            workouts = generate_workouts(
-                days_per_week=days_per_week,
-                goal=training_plan.goal,
-                training_style=training_plan.training_style,
-                equipment=training_plan.equipment_available,
-                intensity_multiplier=intensity_multiplier,
-                preferred_duration=preferred_duration,
-                injuries=training_plan.injuries_limitations,
-                experience_years=training_plan.experience_years,
-                preferred_exercises=training_plan.preferred_exercises,
-                excluded_exercises=training_plan.excluded_exercises
-            )
-            
-            # Create training days
-            for day_num, workout in enumerate(workouts, 1):
-                training_day = TrainingDay.objects.create(
-                    training_week=week,
-                    day_of_week=day_num,
-                    name=workout['name'],
-                    description=workout['description'],
-                    duration_minutes=workout['duration']
-                )
-                
-                # Create exercises for the training day
-                for exercise_data in workout['exercises']:
-                    Exercise.objects.create(
-                        training_day=training_day,
-                        name=exercise_data['name'],
-                        sets=exercise_data['sets'],
-                        reps=exercise_data['reps'],
-                        weight=exercise_data.get('weight', ''),
-                        notes=exercise_data.get('notes', ''),
-                        order=len(training_day.exercises.all()) + 1
-                    )
-            
-            # Add cardio if enabled
-            if training_plan.cardio_preferences and week_num not in deload_weeks:
-                cardio_freq = training_plan.cardio_preferences.get('frequency', 2)
-                cardio_days = generate_cardio_days(
-                    cardio_freq,
-                    days_per_week,
-                    training_plan.cardio_preferences
-                )
-                
-                for day_num in cardio_days:
-                    cardio_workout = generate_cardio_workout(training_plan.cardio_preferences)
-                    training_day = TrainingDay.objects.create(
-                        training_week=week,
-                        day_of_week=day_num,
-                        name=cardio_workout['name'],
-                        description=cardio_workout['description'],
-                        duration_minutes=cardio_workout['duration']
-                    )
-                    
-                    Exercise.objects.create(
-                        training_day=training_day,
-                        name=cardio_workout['exercise'],
-                        sets=1,  # One continuous set for cardio
-                        reps=f"{cardio_workout['duration']} minutes",
-                        weight='bodyweight',
-                        notes=f"Intensity: {cardio_workout['intensity']}\n{cardio_workout['notes']}",
-                        order=1
-                    )
-        
-        # Return the complete training plan
-        serializer = TrainingPlanSerializer(training_plan)
+            }),
+            'days_per_week': request.data.get('days_per_week', 4),
+            'preferred_workout_duration': request.data.get('preferred_workout_duration', 60),
+            'user': request.user
+        }
+        generator = TrainingPlanGenerator()
+        plan = generator.generate_plan(user_data)
+        serializer = TrainingPlanSerializer(plan)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def regenerate_training_plan(request, plan_id):
-    """Regenerate an existing training plan with new preferences."""
+    """Regenerate an existing training plan with new preferences using TrainingPlanGenerator."""
     try:
+        logger.info(f"Regenerating training plan {plan_id} for user {request.user.username}")
+        logger.info(f"Request data: {request.data}")
+        
         training_plan = get_object_or_404(TrainingPlan, id=plan_id, user=request.user)
+        logger.info(f"Found training plan: {training_plan.name}")
         
-        # Update plan preferences
-        serializer = TrainingPlanSerializer(training_plan, data={
-            **request.data,
-            'name': training_plan.name,  # Preserve original name
-        }, partial=True)
-        
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Save updated preferences
-        training_plan = serializer.save()
+        # Update the existing plan's fields with new preferences
+        training_plan.goal = request.data.get('goal', training_plan.goal)
+        training_plan.difficulty = request.data.get('difficulty', training_plan.difficulty)
+        training_plan.duration_weeks = request.data.get('duration_weeks', training_plan.duration_weeks)
+        training_plan.training_style = request.data.get('training_style', training_plan.training_style)
+        training_plan.equipment_available = request.data.get('equipment_available', training_plan.equipment_available)
+        training_plan.include_deload_weeks = request.data.get('include_deload_weeks', training_plan.include_deload_weeks)
+        training_plan.experience_years = request.data.get('experience_years', training_plan.experience_years)
+        training_plan.injuries_limitations = request.data.get('injuries_limitations', training_plan.injuries_limitations)
+        training_plan.preferred_exercises = request.data.get('preferred_exercises', training_plan.preferred_exercises)
+        training_plan.excluded_exercises = request.data.get('excluded_exercises', training_plan.excluded_exercises)
+        training_plan.cardio_preferences = request.data.get('cardio_preferences', training_plan.cardio_preferences)
+        training_plan.save()
+        logger.info("Updated training plan fields")
         
         # Delete existing weeks and workouts
+        weeks_deleted = training_plan.weeks.all().count()
         training_plan.weeks.all().delete()
+        logger.info(f"Deleted {weeks_deleted} existing weeks")
         
-        # Generate new training plan with updated preferences
-        days_per_week = request.data.get('days_per_week', 4)
-        preferred_duration = request.data.get('preferred_workout_duration', 60)
+        # Collect all relevant fields for regeneration
+        user_data = {
+            'goal': training_plan.goal,
+            'difficulty': training_plan.difficulty,
+            'duration_weeks': training_plan.duration_weeks,
+            'training_style': training_plan.training_style,
+            'equipment_available': training_plan.equipment_available,
+            'include_deload_weeks': training_plan.include_deload_weeks,
+            'experience_years': training_plan.experience_years,
+            'injuries_limitations': training_plan.injuries_limitations,
+            'preferred_exercises': training_plan.preferred_exercises,
+            'excluded_exercises': training_plan.excluded_exercises,
+            'cardio_preferences': training_plan.cardio_preferences,
+            'days_per_week': request.data.get('days_per_week', 4),
+            'preferred_workout_duration': request.data.get('preferred_workout_duration', 60),
+            'user': request.user,
+            'existing_plan': training_plan  # Pass the existing plan to avoid creating new one
+        }
         
-        # Calculate deload weeks
-        deload_weeks = []
-        if training_plan.include_deload_weeks:
-            deload_frequency = 4
-            deload_weeks = list(range(deload_frequency, training_plan.duration_weeks + 1, deload_frequency))
+        # Use the generator to regenerate weeks and exercises for the existing plan
+        generator = TrainingPlanGenerator()
+        logger.info("Calling regenerate_existing_plan...")
+        regenerated_plan = generator.regenerate_existing_plan(training_plan, user_data)
+        logger.info(f"Successfully regenerated plan: {regenerated_plan.name}")
         
-        # Generate new weeks and workouts
-        for week_num in range(1, training_plan.duration_weeks + 1):
-            is_deload = week_num in deload_weeks
-            intensity_multiplier = 0.6 if is_deload else 1.0
-            
-            week = TrainingWeek.objects.create(
-                training_plan=training_plan,
-                week_number=week_num,
-                name=f"Week {week_num}" + (" (Deload)" if is_deload else ""),
-                description=generate_week_description(training_plan.goal, is_deload)
-            )
-            
-            # Generate workouts
-            workouts = generate_workouts(
-                days_per_week=days_per_week,
-                goal=training_plan.goal,
-                training_style=training_plan.training_style,
-                equipment=training_plan.equipment_available,
-                intensity_multiplier=intensity_multiplier,
-                preferred_duration=preferred_duration,
-                injuries=training_plan.injuries_limitations,
-                experience_years=training_plan.experience_years,
-                preferred_exercises=training_plan.preferred_exercises,
-                excluded_exercises=training_plan.excluded_exercises
-            )
-            
-            # Create training days
-            for day_num, workout in enumerate(workouts, 1):
-                training_day = TrainingDay.objects.create(
-                    training_week=week,
-                    day_of_week=day_num,
-                    name=workout['name'],
-                    description=workout['description'],
-                    duration_minutes=workout['duration']
-                )
-                
-                # Create exercises
-                for exercise_data in workout['exercises']:
-                    Exercise.objects.create(
-                        training_day=training_day,
-                        name=exercise_data['name'],
-                        sets=exercise_data['sets'],
-                        reps=exercise_data['reps'],
-                        weight=exercise_data.get('weight', ''),
-                        notes=exercise_data.get('notes', ''),
-                        order=len(training_day.exercises.all()) + 1
-                    )
-            
-            # Add cardio if enabled
-            if training_plan.cardio_preferences and week_num not in deload_weeks:
-                cardio_freq = training_plan.cardio_preferences.get('frequency', 2)
-                cardio_days = generate_cardio_days(
-                    cardio_freq,
-                    days_per_week,
-                    training_plan.cardio_preferences
-                )
-                
-                for day_num in cardio_days:
-                    cardio_workout = generate_cardio_workout(training_plan.cardio_preferences)
-                    training_day = TrainingDay.objects.create(
-                        training_week=week,
-                        day_of_week=day_num,
-                        name=cardio_workout['name'],
-                        description=cardio_workout['description'],
-                        duration_minutes=cardio_workout['duration']
-                    )
-                    
-                    Exercise.objects.create(
-                        training_day=training_day,
-                        name=cardio_workout['exercise'],
-                        sets=1,  # One continuous set for cardio
-                        reps=f"{cardio_workout['duration']} minutes",
-                        weight='bodyweight',
-                        notes=f"Intensity: {cardio_workout['intensity']}\n{cardio_workout['notes']}",
-                        order=1
-                    )
-        
-        # Return updated plan
-        serializer = TrainingPlanSerializer(training_plan)
+        # Return the updated plan
+        serializer = TrainingPlanSerializer(regenerated_plan)
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        logger.error(f"Error regenerating training plan: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
