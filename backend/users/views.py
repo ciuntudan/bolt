@@ -15,7 +15,7 @@ from .serializers import (
     WeightHistorySerializer, StrengthProgressSerializer, WorkoutLogSerializer,
     NutritionLogSerializer, UserGoalSerializer, ProgressSummarySerializer,
     UserTrainingPlanSerializer, UserTrainingPlanCreateSerializer,
-    UserMealPlanSerializer, UserMealPlanCreateSerializer,
+    UserMealPlanSerializer, UserMealPlanCreateSerializer, UserMealTimeSerializer,
     TrainingPlanSerializer, TrainingPlanCreateSerializer,
     TrainingDaySerializer, ExerciseSerializer,
     TrainingProgressSerializer, TrainingAchievementSerializer
@@ -1159,8 +1159,10 @@ def generate_meal_plan(request):
         # Create meal times and items for each day
         meal_order = {
             'breakfast': 1,
-            'lunch': 2,
-            'dinner': 3,
+            'morning_snack': 2,
+            'lunch': 3,
+            'afternoon_snack': 4,
+            'dinner': 5,
             'snack': 4,
             'snack1': 4,
             'snack2': 5
@@ -1171,10 +1173,16 @@ def generate_meal_plan(request):
         for date, daily_plan in meal_plan['daily_plans'].items():
             logger.info(f"Processing day {date} with {len(daily_plan['meals'])} meals for user {request.user.username}")
             for meal_name, meal_data in daily_plan['meals'].items():
+                # Use the time from the meal plan generator instead of default times
+                meal_time_str = meal_data.get('time', _get_default_meal_time(meal_name))
+                
+                # Use the proper display name from the meal plan generator
+                display_name = meal_data.get('type', meal_name.title())
+                
                 meal_time = UserMealTime.objects.create(
                     meal_plan=db_meal_plan,
-                    name=meal_name.title(),
-                    time=_get_default_meal_time(meal_name),
+                    name=display_name,
+                    time=meal_time_str,
                     calories=int(meal_data['nutrition']['calories']),
                     protein=int(meal_data['nutrition']['protein']),
                     carbs=int(meal_data['nutrition']['carbs']),
@@ -1300,12 +1308,54 @@ def get_meal_plan_preview(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def mark_meal_eaten(request, meal_time_id):
+    """Mark a meal as eaten or not eaten."""
+    try:
+        # Get the meal time object, ensuring it belongs to the current user
+        meal_time = UserMealTime.objects.filter(
+            id=meal_time_id,
+            meal_plan__user=request.user
+        ).first()
+        
+        if not meal_time:
+            return Response(
+                {'error': 'Meal not found or not authorized'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Toggle or set the eaten status
+        is_eaten = request.data.get('is_eaten', not meal_time.is_eaten)
+        
+        meal_time.is_eaten = is_eaten
+        if is_eaten:
+            meal_time.eaten_at = timezone.now()
+        else:
+            meal_time.eaten_at = None
+        meal_time.save()
+        
+        logger.info(f"User {request.user.username} marked meal {meal_time.name} (ID: {meal_time_id}) as {'eaten' if is_eaten else 'not eaten'}")
+        
+        # Return updated meal time data
+        serializer = UserMealTimeSerializer(meal_time)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error marking meal as eaten: {str(e)}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 def _get_default_meal_time(meal_name: str) -> str:
     """Get default time for each meal type."""
     meal_times = {
         'breakfast': '08:00',
         'lunch': '13:00',
         'dinner': '19:00',
-        'snack': '16:00'
+        'snack': '16:00',
+        'morning_snack': '10:00',
+        'afternoon_snack': '16:00'
     }
     return meal_times.get(meal_name.lower(), '12:00')

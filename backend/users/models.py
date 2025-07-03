@@ -202,7 +202,9 @@ class UserMealTime(models.Model):
     carbs = models.IntegerField()  
     fats = models.IntegerField()  
     notes = models.TextField(blank=True)
-    order = models.IntegerField()  
+    order = models.IntegerField()
+    is_eaten = models.BooleanField(default=False)
+    eaten_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['order']

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Apple, ChevronRight, ChevronDown, ChevronUp, 
-  Calendar, Plus, Minus, RefreshCw, Filter, PenSquare, Utensils
+  Calendar, Plus, Minus, RefreshCw, Filter, PenSquare, Utensils, Check, X
 } from 'lucide-react';
 import axios from '../../utils/axios';
 
@@ -32,6 +32,8 @@ interface MealTime {
   fats: number;
   order: number;
   meal_items: MealItem[];
+  is_eaten: boolean;
+  eaten_at: string | null;
 }
 
 interface MealPlan {
@@ -52,6 +54,7 @@ interface DayPlan {
   day: string;
   date: string;
   meals: Array<{
+    id: number;
     type: string;
     time: string;
     title: string;
@@ -68,6 +71,8 @@ interface DayPlan {
       calories: number;
       protein: number;
     }>;
+    is_eaten: boolean;
+    eaten_at: string | null;
   }>;
   totals: {
     calories: number;
@@ -101,7 +106,7 @@ const DAILY_MEALS = [
           carbs: 40,
           fat: 12
         },
-        image: 'https://source.unsplash.com/K1ATc-tjf8U/800x600'
+
       },
       {
         type: 'Snack',
@@ -119,7 +124,7 @@ const DAILY_MEALS = [
           carbs: 40,
           fat: 8
         },
-        image: 'https://source.unsplash.com/qvIrI4ueqzY/800x600'
+
       },
       {
         type: 'Lunch',
@@ -140,7 +145,7 @@ const DAILY_MEALS = [
           carbs: 10,
           fat: 16
         },
-        image: 'https://source.unsplash.com/IGfIGP5ONV0/800x600'
+
       },
       {
         type: 'Snack',
@@ -158,7 +163,7 @@ const DAILY_MEALS = [
           carbs: 27,
           fat: 1
         },
-        image: 'https://source.unsplash.com/F1-UvxPkJDU/800x600'
+
       },
       {
         type: 'Dinner',
@@ -179,7 +184,7 @@ const DAILY_MEALS = [
           carbs: 35,
           fat: 24
         },
-        image: 'https://source.unsplash.com/YnPNEFC4Rn0/800x600'
+
       }
     ],
     totals: {
@@ -210,7 +215,7 @@ const DAILY_MEALS = [
           carbs: 15,
           fat: 10
         },
-        image: 'https://source.unsplash.com/Wl5rExgPrGw/800x600'
+
       }
       // Additional meals would be added here
     ],
@@ -420,6 +425,61 @@ const MealPlanPage: React.FC = () => {
     }
   };
   
+  const markMealAsEaten = async (mealTimeId: number, isEaten: boolean) => {
+    try {
+      const response = await axios.patch(`/meal-times/${mealTimeId}/mark-eaten/`, {
+        is_eaten: isEaten
+      });
+      
+      if (response.status === 200) {
+        console.log(`API call successful, updating UI state for meal ${mealTimeId} to ${isEaten ? 'eaten' : 'not eaten'}`);
+        
+        // Update the local state with explicit new object creation
+        setMealPlan(prevPlan => {
+          if (!prevPlan) return prevPlan;
+          
+          const updatedPlan = {
+            ...prevPlan,
+            meal_times: prevPlan.meal_times.map(mealTime => 
+              mealTime.id === mealTimeId 
+                ? { ...mealTime, is_eaten: isEaten, eaten_at: isEaten ? new Date().toISOString() : null }
+                : mealTime
+            )
+          };
+          
+          console.log('Updated meal plan state:', updatedPlan.meal_times.find(m => m.id === mealTimeId)?.is_eaten);
+          return updatedPlan;
+        });
+        
+        // Update selectedMeal if it matches the updated meal
+        if (selectedMeal && selectedMeal.id === mealTimeId) {
+          setSelectedMeal((prev: MealTime | null) => {
+            if (!prev) return null;
+            
+            const updated = {
+              ...prev,
+              is_eaten: isEaten,
+              eaten_at: isEaten ? new Date().toISOString() : null
+            };
+            
+            console.log('Updated selected meal:', updated.is_eaten);
+            return updated;
+          });
+        }
+        
+        console.log(`✅ Meal ${mealTimeId} marked as ${isEaten ? 'eaten' : 'not eaten'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error marking meal as eaten:', error);
+      setError('Failed to update meal status');
+    }
+  };
+
+  const handleEditDay = (date: string) => {
+    // For now, just show an alert. Can be enhanced to open an edit modal
+    alert(`Edit functionality for ${date} coming soon! For now, you can regenerate the entire meal plan.`);
+  };
+
   const regenerateMealPlan = async () => {
     try {
       setLoading(true);
@@ -497,6 +557,7 @@ const MealPlanPage: React.FC = () => {
       
       // Add meal to the day
       acc[dayName].meals.push({
+        id: meal.id,
         type: meal.name,
         time: meal.time,
         title: meal.name,
@@ -505,14 +566,16 @@ const MealPlanPage: React.FC = () => {
           calories: meal.calories,
           protein: meal.protein,
           carbs: meal.carbs,
-          fat: meal.fats
+          fat: meal.fats  // backend sends 'fats' field
         },
         ingredients: meal.meal_items.map(item => ({
           name: item.name,
           amount: `${item.quantity}${item.unit}`,
           calories: item.calories,
           protein: item.protein
-        }))
+        })),
+        is_eaten: meal.is_eaten,
+        eaten_at: meal.eaten_at
       });
       
       // Update day totals
@@ -747,7 +810,11 @@ const MealPlanPage: React.FC = () => {
                           {dayPlan.meals.map((meal, index) => (
                             <div 
                               key={index}
-                              className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-200 cursor-pointer transition-all duration-200"
+                              className={`bg-gray-50 rounded-lg overflow-hidden border transition-all duration-200 cursor-pointer ${
+                                meal.is_eaten 
+                                  ? 'border-green-200 bg-green-50' 
+                                  : 'border-gray-200 hover:border-blue-200'
+                              }`}
                               onClick={() => openMealDetail(meal)}
                             >
                               <div className="p-4">
@@ -756,6 +823,12 @@ const MealPlanPage: React.FC = () => {
                                     <div className="flex items-center text-sm text-gray-500 mb-1">
                                       <Utensils className="h-4 w-4 mr-1" /> 
                                       {meal.type} • {meal.time}
+                                      {meal.is_eaten && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                          <Check className="h-3 w-3 mr-1" />
+                                          Eaten
+                                        </span>
+                                      )}
                                     </div>
                                     <h3 className="text-lg font-medium text-gray-900">{meal.title}</h3>
                                     <p className="mt-1 text-sm text-gray-600">{meal.description}</p>
@@ -799,7 +872,10 @@ const MealPlanPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          <button className="text-blue-600 text-sm font-medium hover:text-blue-500 flex items-center">
+                          <button 
+                            onClick={() => handleEditDay(dayPlan.date)}
+                            className="text-blue-600 text-sm font-medium hover:text-blue-500 flex items-center"
+                          >
                             <PenSquare className="h-4 w-4 mr-1" />
                             Edit day
                           </button>
@@ -917,6 +993,12 @@ const MealPlanPage: React.FC = () => {
                           <h3 className="text-lg leading-6 font-medium text-gray-900">{selectedMeal.title}</h3>
                           <p className="mt-1 text-sm text-gray-500">
                             {selectedMeal.type} • {selectedMeal.time}
+                            {selectedMeal.is_eaten && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <Check className="h-3 w-3 mr-1" />
+                                Eaten
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -924,14 +1006,6 @@ const MealPlanPage: React.FC = () => {
                             {selectedMeal.nutrition.calories} kcal
                           </span>
                         </div>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <img
-                          src={selectedMeal.image}
-                          alt={selectedMeal.title}
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
                       </div>
                       
                       <div className="mt-4">
@@ -989,9 +1063,27 @@ const MealPlanPage: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    onClick={() => {
+                      markMealAsEaten(selectedMeal.id, !selectedMeal.is_eaten);
+                      // Don't auto-close modal so user can see the status change
+                    }}
+                    className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm ${
+                      selectedMeal.is_eaten
+                        ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 focus:ring-red-500'
+                        : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 focus:ring-green-500'
+                    }`}
                   >
-                    Mark as eaten
+                    {selectedMeal.is_eaten ? (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Mark as not eaten
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Mark as eaten
+                      </>
+                    )}
                   </button>
                 </div>
               </motion.div>

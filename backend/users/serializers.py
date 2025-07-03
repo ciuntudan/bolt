@@ -223,7 +223,8 @@ class UserMealTimeSerializer(serializers.ModelSerializer):
         model = UserMealTime
         fields = [
             'id', 'name', 'time', 'date', 'calories', 'protein',
-            'carbs', 'fats', 'notes', 'order', 'meal_items'
+            'carbs', 'fats', 'notes', 'order', 'meal_items',
+            'is_eaten', 'eaten_at'
         ]
 
 class UserMealPlanSerializer(serializers.ModelSerializer):

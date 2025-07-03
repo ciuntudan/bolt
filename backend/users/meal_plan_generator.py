@@ -838,51 +838,85 @@ class MealPlanGenerator:
         # Select foods for meal with limited quantities per category
         selected_foods = self._select_foods_for_meal(meal_type, meal_composition)
         
-        # Calculate portions more accurately based on target calories
+        # Calculate portions more accurately based on target macros, not just calories
         total_target_calories = target_calories
-        current_calories = 0
+        target_protein = meal_macros['protein']
+        target_carbs = meal_macros['carbs'] 
+        target_fat = meal_macros['fat']
         
-        # Add foods to meal with better portion control
+        current_nutrition = {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0}
+        
+        # Add foods to meal with macro-targeted portion control
         for category, foods in selected_foods.items():
-            # Calculate how many calories this category should contribute
-            category_target_calories = total_target_calories * meal_composition.get(category, 0)
+            if not foods:
+                continue
+                
+            # Calculate macro targets for this category
+            if category == 'proteins':
+                category_target_protein = target_protein * meal_composition.get(category, 0)
+                category_target_calories = category_target_protein * 4  # 4 cal per g protein
+            elif category == 'carbs':
+                category_target_carbs = target_carbs * meal_composition.get(category, 0)
+                category_target_calories = category_target_carbs * 4  # 4 cal per g carbs
+            elif category == 'fats':
+                category_target_fat = target_fat * meal_composition.get(category, 0)
+                category_target_calories = category_target_fat * 9  # 9 cal per g fat
+            else:
+                # For other categories (vegetables, fruits, dairy), use calorie-based targeting
+                category_target_calories = total_target_calories * meal_composition.get(category, 0)
             
-            if category_target_calories > 0 and foods:
-                # Distribute calories evenly among foods in this category
-                calories_per_food = category_target_calories / len(foods)
+            if category_target_calories > 0:
+                # Distribute target among foods in this category
+                target_per_food = category_target_calories / len(foods)
                 
                 for name, nutrients in foods.items():
-                    if current_calories >= total_target_calories * 1.05:  # Stop if we exceed target by 5%
+                    # Don't add if we're significantly over total calorie target
+                    if current_nutrition['calories'] >= total_target_calories * 1.15:  # Allow 15% overage
                         break
-                        
-                    # Calculate portion needed to achieve target calories for this food
-                    if nutrients['calories'] > 0:
-                        target_portion = (calories_per_food / nutrients['calories']) * 100
-                        # Add a 15% buffer to ensure we reach targets
-                        target_portion *= 1.15
+                    
+                    # Calculate portion based on the PRIMARY macro for this category
+                    if category == 'proteins' and nutrients['protein'] > 0:
+                        # For proteins, target protein content first
+                        target_protein_from_food = category_target_protein / len(foods)
+                        target_portion = (target_protein_from_food / nutrients['protein']) * 100
+                    elif category == 'carbs' and nutrients['carbs'] > 0:
+                        # For carbs, target carb content first
+                        target_carbs_from_food = category_target_carbs / len(foods)
+                        target_portion = (target_carbs_from_food / nutrients['carbs']) * 100
+                    elif category == 'fats' and nutrients['fat'] > 0:
+                        # For fats, target fat content first
+                        target_fat_from_food = category_target_fat / len(foods)
+                        target_portion = (target_fat_from_food / nutrients['fat']) * 100
                     else:
-                        target_portion = 50  # fallback
+                        # For other categories, use calorie-based calculation
+                        if nutrients['calories'] > 0:
+                            target_portion = (target_per_food / nutrients['calories']) * 100
+                        else:
+                            target_portion = 50  # fallback
+                    
+                    # Add buffer to ensure we hit targets
+                    target_portion *= 1.2  # 20% buffer to better hit targets
                     
                     # Apply minimum and maximum portion constraints
-                    min_portion = 30   # minimum 30g (increased)
-                    max_portion = 300  # maximum 300g (increased)
+                    min_portion = 40   # minimum 40g
+                    max_portion = 400  # maximum 400g
                     
                     # Adjust limits for specific food types
                     if 'egg' in name.lower():
                         min_portion = 50   # 1 egg minimum
-                        max_portion = 200  # 4 eggs maximum (increased)
+                        max_portion = 300  # 6 eggs maximum
                     elif 'protein' in name.lower() and 'whey' in name.lower():
-                        min_portion = 30   # minimum 30g scoop (1 full scoop)
-                        max_portion = 75   # maximum 75g (2.5 scoops) (increased)
+                        min_portion = 30   # minimum 30g scoop
+                        max_portion = 90   # maximum 90g (3 scoops)
                     elif 'oil' in name.lower():
-                        min_portion = 10   # 2 tsp minimum (increased for more fat)
-                        max_portion = 25   # 5 tsp maximum (increased)
+                        min_portion = 10   # 2 tsp minimum
+                        max_portion = 35   # 7 tsp maximum
                     elif any(veg in name.lower() for veg in ['spinach', 'lettuce', 'broccoli', 'cucumber']):
-                        min_portion = 50   # vegetables can be larger
-                        max_portion = 200  # (increased)
+                        min_portion = 60   # vegetables can be larger
+                        max_portion = 250
                     elif any(carb in name.lower() for carb in ['rice', 'pasta', 'potato', 'bread', 'oats']):
-                        min_portion = 40   # carbs need decent portions
-                        max_portion = 250  # allow larger carb servings
+                        min_portion = 50   # carbs need decent portions
+                        max_portion = 350  # allow large carb servings
                     
                     # Constrain portion to limits
                     portion = max(min_portion, min(target_portion, max_portion))
@@ -942,7 +976,50 @@ class MealPlanGenerator:
                     meal['nutrition']['carbs'] += food_item['carbs']
                     meal['nutrition']['fat'] += food_item['fat']
                     
-                    current_calories += food_item['calories']
+                    current_nutrition['calories'] += food_item['calories']
+                    current_nutrition['protein'] += food_item['protein']
+                    current_nutrition['carbs'] += food_item['carbs']
+                    current_nutrition['fat'] += food_item['fat']
+        
+        # Post-generation macro adjustment: scale to better hit targets
+        calorie_ratio = total_target_calories / meal['nutrition']['calories'] if meal['nutrition']['calories'] > 0 else 1
+        protein_ratio = target_protein / meal['nutrition']['protein'] if meal['nutrition']['protein'] > 0 else 1
+        fat_ratio = target_fat / meal['nutrition']['fat'] if meal['nutrition']['fat'] > 0 else 1
+        
+        # If any macro is significantly off (>10% difference), apply targeted scaling
+        needs_scaling = (abs(1 - calorie_ratio) > 0.10 or 
+                        abs(1 - protein_ratio) > 0.10 or 
+                        abs(1 - fat_ratio) > 0.10)
+        
+        if needs_scaling and meal['nutrition']['calories'] > 0:
+            # Prioritize calorie accuracy since that's the main target
+            if abs(1 - calorie_ratio) > 0.10:
+                scaling_factor = calorie_ratio
+            else:
+                # Use a weighted average favoring calories
+                scaling_factor = (calorie_ratio * 0.6 + protein_ratio * 0.25 + fat_ratio * 0.15)
+            
+            # Limit scaling to reasonable bounds - be more aggressive
+            scaling_factor = max(0.7, min(1.6, scaling_factor))
+            
+            print(f"Meal needs macro adjustment. Calorie ratio: {calorie_ratio:.2f}, Protein ratio: {protein_ratio:.2f}, Fat ratio: {fat_ratio:.2f}")
+            print(f"Applying scaling factor: {scaling_factor:.2f}")
+            
+            # Scale all food portions proportionally
+            for food_item in meal['foods']:
+                food_item['calories'] = round(food_item['calories'] * scaling_factor, 1)
+                food_item['protein'] = round(food_item['protein'] * scaling_factor, 1)
+                food_item['carbs'] = round(food_item['carbs'] * scaling_factor, 1)
+                food_item['fat'] = round(food_item['fat'] * scaling_factor, 1)
+                food_item['quantity'] = round(food_item['quantity'] * scaling_factor, 1)
+            
+            # Recalculate meal nutrition totals
+            meal['nutrition'] = {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0}
+            for food_item in meal['foods']:
+                meal['nutrition']['calories'] += food_item['calories']
+                meal['nutrition']['protein'] += food_item['protein']
+                meal['nutrition']['carbs'] += food_item['carbs']
+                meal['nutrition']['fat'] += food_item['fat']
         
         return meal
 
@@ -955,25 +1032,25 @@ class MealPlanGenerator:
         if user_data.get('goal') == 'muscle_gain':
             meal_schedule = {
                 'breakfast': {'time': '07:30', 'ratio': 0.22},
-                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'morning_snack': {'time': '10:00', 'ratio': 0.13},
                 'lunch': {'time': '13:00', 'ratio': 0.22},
-                'snack2': {'time': '16:00', 'ratio': 0.13},
+                'afternoon_snack': {'time': '16:00', 'ratio': 0.13},
                 'dinner': {'time': '19:00', 'ratio': 0.20}
             }
         elif user_data.get('goal') == 'weight_loss':
             meal_schedule = {
                 'breakfast': {'time': '08:00', 'ratio': 0.25},
-                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'morning_snack': {'time': '10:00', 'ratio': 0.13},
                 'lunch': {'time': '13:00', 'ratio': 0.30},
-                'snack': {'time': '16:00', 'ratio': 0.10},
+                'afternoon_snack': {'time': '16:00', 'ratio': 0.10},
                 'dinner': {'time': '19:00', 'ratio': 0.25}
             }
         else:  # maintenance
             meal_schedule = {
                 'breakfast': {'time': '08:00', 'ratio': 0.22},
-                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'morning_snack': {'time': '10:00', 'ratio': 0.13},
                 'lunch': {'time': '13:00', 'ratio': 0.33},
-                'snack': {'time': '16:00', 'ratio': 0.13},
+                'afternoon_snack': {'time': '16:00', 'ratio': 0.13},
                 'dinner': {'time': '19:00', 'ratio': 0.22}
             }
 
@@ -990,16 +1067,17 @@ class MealPlanGenerator:
         }
 
         for meal_name, details in meal_schedule.items():
-            # Get meal composition using ML model
-            meal_composition = self.predict_meal_composition(
-                meal_name.replace('1', '').replace('2', '').replace('snack', 'snack'),  
-                user_data
-            )
+            # Get meal composition using ML model - normalize meal names
+            normalized_meal_name = meal_name
+            if 'snack' in meal_name:
+                normalized_meal_name = 'snack'
+            
+            meal_composition = self.predict_meal_composition(normalized_meal_name, user_data)
             
             # Add meal type and targets to preferences
             meal_preferences = {
                 **user_data,
-                'meal_type': meal_name.replace('1', '').replace('2', '').replace('snack', 'snack'),
+                'meal_type': normalized_meal_name,
                 'meal_composition': meal_composition,
                 'target_calories': daily_calories * details['ratio'],
                 'target_protein': daily_macros['protein'] * details['ratio'],
@@ -1009,11 +1087,18 @@ class MealPlanGenerator:
             
             generated_meal = self.generate_meal(meal_preferences['target_calories'], meal_preferences)
             
-            # Add timing information
+            # Add timing information with proper display names
+            if meal_name == 'morning_snack':
+                display_name = 'Morning Snack'
+            elif meal_name == 'afternoon_snack':
+                display_name = 'Afternoon Snack'
+            else:
+                display_name = meal_name.replace('_', ' ').title()
+            
             daily_plan['meals'][meal_name] = {
                 **generated_meal,
                 'time': details['time'],
-                'type': meal_name.replace('1', '').replace('2', '').replace('snack', 'Snack').title(),
+                'type': display_name,
                 'target_calories': meal_preferences['target_calories'],
                 'target_protein': meal_preferences['target_protein'],
                 'target_carbs': meal_preferences['target_carbs'],
@@ -1023,6 +1108,37 @@ class MealPlanGenerator:
             # Add to daily totals
             for key in daily_plan['total_nutrition']:
                 daily_plan['total_nutrition'][key] += generated_meal['nutrition'][key]
+
+        # Final daily-level adjustment to ensure we hit calorie targets
+        actual_calories = daily_plan['total_nutrition']['calories']
+        target_calories = daily_plan['targets']['calories']
+        calorie_accuracy = actual_calories / target_calories if target_calories > 0 else 1
+        
+        # If we're significantly off target (>10%), scale all meals proportionally
+        if abs(1 - calorie_accuracy) > 0.10:
+            scaling_factor = target_calories / actual_calories
+            scaling_factor = max(0.8, min(1.3, scaling_factor))  # Limit scaling
+            
+            print(f"Daily plan calorie adjustment needed: {actual_calories:.0f}/{target_calories:.0f} ({calorie_accuracy:.1%})")
+            print(f"Applying daily scaling factor: {scaling_factor:.2f}")
+            
+            # Scale all meals in the day
+            for meal_name, meal_data in daily_plan['meals'].items():
+                # Scale nutrition values
+                for nutrient in ['calories', 'protein', 'carbs', 'fat']:
+                    meal_data['nutrition'][nutrient] *= scaling_factor
+                
+                # Scale individual food items
+                for food_item in meal_data['foods']:
+                    for nutrient in ['calories', 'protein', 'carbs', 'fat']:
+                        food_item[nutrient] = round(food_item[nutrient] * scaling_factor, 1)
+                    food_item['quantity'] = round(food_item['quantity'] * scaling_factor, 1)
+            
+            # Recalculate daily totals
+            daily_plan['total_nutrition'] = {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0}
+            for meal_data in daily_plan['meals'].values():
+                for key in daily_plan['total_nutrition']:
+                    daily_plan['total_nutrition'][key] += meal_data['nutrition'][key]
 
         return daily_plan
 
@@ -1119,7 +1235,9 @@ class MealPlanGenerator:
         }
         
         # Get appropriate food groups for meal type
-        meal_type_lower = meal_type.lower().replace('1', '').replace('2', '') 
+        meal_type_lower = meal_type.lower()
+        if 'snack' in meal_type_lower:
+            meal_type_lower = 'snack'
         food_groups = meal_foods.get(meal_type_lower, meal_foods['snack'])
         
         # Select foods based on composition (more conservative)

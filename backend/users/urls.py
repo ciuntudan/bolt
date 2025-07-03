@@ -10,7 +10,7 @@ from .views import (
     GenerateUserTrainingPlanView, GenerateUserMealPlanView,
     TrainingPlanViewSet, TrainingDayViewSet, ExerciseViewSet,
     TrainingProgressViewSet, TrainingAchievementViewSet, UserProfileView,
-    generate_meal_plan, get_meal_plan_preview
+    generate_meal_plan, get_meal_plan_preview, mark_meal_eaten
 )
 
 app_name = 'users'
@@ -50,6 +50,7 @@ api_patterns = [
     path('meal-plans/<int:pk>/', UserMealPlanDetailView.as_view(), name='meal_plan_detail'),
     path('meal-plans/generate/', generate_meal_plan, name='generate_meal_plan'),
     path('meal-plans/preview/', get_meal_plan_preview, name='meal_plan_preview'),
+    path('meal-times/<int:meal_time_id>/mark-eaten/', mark_meal_eaten, name='mark_meal_eaten'),
 ]
 
 # Use auth_patterns when included under /api/auth/
