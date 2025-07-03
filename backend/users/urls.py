@@ -10,7 +10,8 @@ from .views import (
     GenerateUserTrainingPlanView, GenerateUserMealPlanView,
     TrainingPlanViewSet, TrainingDayViewSet, ExerciseViewSet,
     TrainingProgressViewSet, TrainingAchievementViewSet, UserProfileView,
-    generate_meal_plan, get_meal_plan_preview, mark_meal_eaten
+    generate_meal_plan, get_meal_plan_preview, mark_meal_eaten,
+    update_email, update_password
 )
 
 app_name = 'users'
@@ -32,6 +33,8 @@ auth_patterns = [
     path('user/', UserView.as_view(), name='user'),
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/<int:user_id>/', UserProfileView.as_view(), name='user-profile'),
+    path('update-email/', update_email, name='update_email'),
+    path('update-password/', update_password, name='update_password'),
     # Progress endpoints under auth
     path('progress/summary/', ProgressSummaryView.as_view(), name='progress_summary'),
     path('progress/metrics/', ProgressMetricsView.as_view(), name='progress_metrics'),

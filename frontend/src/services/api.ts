@@ -167,6 +167,20 @@ export const authAPI = {
     const response = await api.put('/auth/profile/', profileData);
     return response.data;
   },
+
+  updateEmail: async (email: string) => {
+    const response = await api.patch('/auth/update-email/', { email });
+    return response.data;
+  },
+
+  updatePassword: async (currentPassword: string, newPassword: string, confirmPassword: string) => {
+    const response = await api.patch('/auth/update-password/', {
+      current_password: currentPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    });
+    return response.data;
+  },
 };
 
 export default api;

@@ -35,6 +35,8 @@ from .workout_generator import (
 )
 from .meal_plan_generator import MealPlanGenerator
 import logging
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -1359,3 +1361,100 @@ def _get_default_meal_time(meal_name: str) -> str:
         'afternoon_snack': '16:00'
     }
     return meal_times.get(meal_name.lower(), '12:00')
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_email(request):
+    """Update user's email address."""
+    try:
+        new_email = request.data.get('email')
+        
+        if not new_email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if email is already in use by another user
+        if User.objects.exclude(id=request.user.id).filter(email=new_email).exists():
+            return Response(
+                {'error': 'This email address is already in use'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update the user's email
+        user = request.user
+        user.email = new_email
+        user.username = new_email  # Also update username if using email as username
+        user.save()
+        
+        logger.info(f"User {user.id} updated email to {new_email}")
+        
+        return Response(
+            {'message': 'Email updated successfully', 'email': new_email}, 
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f"Error updating email: {str(e)}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_password(request):
+    """Update user's password."""
+    try:
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+        
+        if not all([current_password, new_password, confirm_password]):
+            return Response(
+                {'error': 'All password fields are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if new passwords match
+        if new_password != confirm_password:
+            return Response(
+                {'error': 'New passwords do not match'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check current password
+        user = request.user
+        if not user.check_password(current_password):
+            return Response(
+                {'error': 'Current password is incorrect'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate new password
+        try:
+            validate_password(new_password, user)
+        except ValidationError as e:
+            return Response(
+                {'error': list(e.messages)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update password
+        user.set_password(new_password)
+        user.save()
+        
+        logger.info(f"User {user.id} ({user.username}) updated password")
+        
+        return Response(
+            {'message': 'Password updated successfully'}, 
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        logger.error(f"Error updating password: {str(e)}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
