@@ -66,12 +66,14 @@ def create_synthetic_data(n_samples=10000):
     y_calories = generate_calorie_targets(X)
     y_macros = generate_macro_ratios(X)
     y_meal_timing = generate_meal_timing(X)
+    y_meal_composition = generate_meal_composition(X)
     
     return {
         'X': X,
         'y_calories': y_calories,
         'y_macros': y_macros,
-        'y_meal_timing': y_meal_timing
+        'y_meal_timing': y_meal_timing,
+        'y_meal_composition': y_meal_composition
     }
 
 def train_models():
@@ -99,6 +101,11 @@ def train_models():
     meal_timing_model = RandomForestRegressor(n_estimators=100, random_state=42)
     meal_timing_model.fit(X_scaled, data['y_meal_timing'])
     
+    # Train meal composition model
+    print("Training meal composition model...")
+    meal_composition_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    meal_composition_model.fit(X_scaled, data['y_meal_composition'])
+    
     # Save models and scaler
     print("Saving models and scaler...")
     model_dir = os.path.join(os.path.dirname(__file__), 'models')
@@ -108,6 +115,7 @@ def train_models():
     joblib.dump(calorie_model, os.path.join(model_dir, 'calorie_model.joblib'))
     joblib.dump(macro_model, os.path.join(model_dir, 'macro_model.joblib'))
     joblib.dump(meal_timing_model, os.path.join(model_dir, 'meal_timing_model.joblib'))
+    joblib.dump(meal_composition_model, os.path.join(model_dir, 'meal_composition_model.joblib'))
     
     print("Successfully trained and saved all models")
 
@@ -210,6 +218,28 @@ def generate_meal_timing(X):
         meal_ratios[i] = ratios
     
     return meal_ratios
+
+def generate_meal_composition(X):
+    """Generate synthetic meal composition ratios for each meal (proteins, carbs, fats, vegetables, fruits, dairy)"""
+    n_samples = X.shape[0]
+    composition = np.zeros((n_samples, 6))
+    for i in range(n_samples):
+        meal_type_idx = np.argmax(X[i, -4:])
+        # Default templates (should match get_default_meal_composition in generator)
+        if meal_type_idx == 0:  # breakfast
+            ratios = np.array([0.3, 0.3, 0.2, 0, 0.1, 0.1])
+        elif meal_type_idx == 1:  # lunch
+            ratios = np.array([0.3, 0.3, 0.15, 0.25, 0, 0])
+        elif meal_type_idx == 2:  # dinner
+            ratios = np.array([0.35, 0.25, 0.15, 0.25, 0, 0])
+        else:  # snack
+            ratios = np.array([0.3, 0.3, 0.2, 0, 0.2, 0])
+        # Add some noise
+        ratios += np.random.normal(0, 0.02, 6)
+        ratios = np.clip(ratios, 0, 1)
+        ratios = ratios / ratios.sum()
+        composition[i] = ratios
+    return composition
 
 if __name__ == '__main__':
     train_models() 

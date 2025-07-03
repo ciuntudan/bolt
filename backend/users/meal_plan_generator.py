@@ -433,7 +433,7 @@ class MealPlanGenerator:
             goal_adjustments = {
                 'weight_loss': -500,
                 'maintenance': 0,
-                'muscle_gain': 300
+                'muscle_gain': 500
             }
             predicted_calories += goal_adjustments.get(user_data.get('goal', 'maintenance').lower(), 0)
             return predicted_calories
@@ -791,25 +791,27 @@ class MealPlanGenerator:
         # Define meal schedule based on goal and protein distribution
         if user_data.get('goal') == 'muscle_gain':
             meal_schedule = {
-                'breakfast': {'time': '07:30', 'ratio': 0.25},
-                'snack1': {'time': '10:30', 'ratio': 0.15},
-                'lunch': {'time': '13:00', 'ratio': 0.25},
-                'snack2': {'time': '16:00', 'ratio': 0.15},
+                'breakfast': {'time': '07:30', 'ratio': 0.22},
+                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'lunch': {'time': '13:00', 'ratio': 0.22},
+                'snack2': {'time': '16:00', 'ratio': 0.13},
                 'dinner': {'time': '19:00', 'ratio': 0.20}
             }
         elif user_data.get('goal') == 'weight_loss':
             meal_schedule = {
-                'breakfast': {'time': '08:00', 'ratio': 0.30},
-                'lunch': {'time': '13:00', 'ratio': 0.35},
+                'breakfast': {'time': '08:00', 'ratio': 0.25},
+                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'lunch': {'time': '13:00', 'ratio': 0.30},
                 'snack': {'time': '16:00', 'ratio': 0.10},
                 'dinner': {'time': '19:00', 'ratio': 0.25}
             }
         else:  # maintenance
             meal_schedule = {
-                'breakfast': {'time': '08:00', 'ratio': 0.25},
-                'lunch': {'time': '13:00', 'ratio': 0.35},
-                'snack': {'time': '16:00', 'ratio': 0.15},
-                'dinner': {'time': '19:00', 'ratio': 0.25}
+                'breakfast': {'time': '08:00', 'ratio': 0.22},
+                'snack1': {'time': '10:30', 'ratio': 0.13},
+                'lunch': {'time': '13:00', 'ratio': 0.33},
+                'snack': {'time': '16:00', 'ratio': 0.13},
+                'dinner': {'time': '19:00', 'ratio': 0.22}
             }
 
         # Generate meals
@@ -827,28 +829,41 @@ class MealPlanGenerator:
         for meal_name, details in meal_schedule.items():
             # Get meal composition using ML model
             meal_composition = self.predict_meal_composition(
-                meal_name.replace('1', '').replace('2', ''),  
+                meal_name.replace('1', '').replace('2', '').replace('snack', 'snack'),  
                 user_data
             )
             
             # Add meal type and targets to preferences
             meal_preferences = {
                 **user_data,
-                'meal_type': meal_name.replace('1', '').replace('2', ''),
+                'meal_type': meal_name.replace('1', '').replace('2', '').replace('snack', 'snack'),
                 'meal_composition': meal_composition,
                 'target_calories': daily_calories * details['ratio'],
-                'target_protein': daily_macros['protein'] * details['ratio'],
+                'target_protein': min(daily_macros['protein'] * details['ratio'], 50),
                 'target_carbs': daily_macros['carbs'] * details['ratio'],
                 'target_fat': daily_macros['fat'] * details['ratio']
             }
             
             generated_meal = self.generate_meal(meal_preferences['target_calories'], meal_preferences)
             
+            # Cap protein in the meal to 50g
+            if generated_meal['nutrition']['protein'] > 50:
+                scale = 50 / generated_meal['nutrition']['protein']
+                for food in generated_meal['foods']:
+                    food['protein'] = round(food['protein'] * scale, 1)
+                    food['calories'] = round(food['calories'] * scale, 1)
+                    food['carbs'] = round(food['carbs'] * scale, 1)
+                    food['fat'] = round(food['fat'] * scale, 1)
+                generated_meal['nutrition']['protein'] = 50
+                generated_meal['nutrition']['calories'] = round(generated_meal['nutrition']['calories'] * scale, 1)
+                generated_meal['nutrition']['carbs'] = round(generated_meal['nutrition']['carbs'] * scale, 1)
+                generated_meal['nutrition']['fat'] = round(generated_meal['nutrition']['fat'] * scale, 1)
+            
             # Add timing information
             daily_plan['meals'][meal_name] = {
                 **generated_meal,
                 'time': details['time'],
-                'type': meal_name.replace('1', '').replace('2', '').title(),
+                'type': meal_name.replace('1', '').replace('2', '').replace('snack', 'Snack').title(),
                 'target_calories': meal_preferences['target_calories'],
                 'target_protein': meal_preferences['target_protein'],
                 'target_carbs': meal_preferences['target_carbs'],
