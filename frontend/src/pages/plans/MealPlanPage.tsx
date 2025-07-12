@@ -243,13 +243,13 @@ const DIETARY_PREFERENCES = [
 
 // Calorie adjustment options
 const CALORIE_ADJUSTMENTS = [
-  { value: -500, label: 'Weight Loss (Aggressive)' },
-  { value: -300, label: 'Weight Loss (Moderate)' },
-  { value: -100, label: 'Weight Loss (Slow)' },
-  { value: 0, label: 'Maintenance' },
-  { value: 200, label: 'Muscle Gain (Lean)' },
-  { value: 400, label: 'Muscle Gain (Moderate)' },
-  { value: 600, label: 'Muscle Gain (Aggressive)' }
+  { value: -500, label: 'Weight Loss (Aggressive)', goal: 'weight_loss' },
+  { value: -300, label: 'Weight Loss (Moderate)', goal: 'weight_loss' },
+  { value: -100, label: 'Weight Loss (Slow)', goal: 'weight_loss' },
+  { value: 0, label: 'Maintenance', goal: 'maintenance' },
+  { value: 200, label: 'Muscle Gain (Lean)', goal: 'muscle_gain' },
+  { value: 400, label: 'Muscle Gain (Moderate)', goal: 'muscle_gain' },
+  { value: 600, label: 'Muscle Gain (Aggressive)', goal: 'muscle_gain' }
 ];
 
 const MealPlanPage: React.FC = () => {
@@ -492,7 +492,7 @@ const MealPlanPage: React.FC = () => {
         age: profileData?.age || 25,
         gender: profileData?.gender || 'male',
         activity_level: activityLevel,
-        goal: CALORIE_ADJUSTMENTS.find(adj => adj.value === calorieAdjustment)?.label.toLowerCase().split(' ')[0] || 'maintenance',
+        goal: CALORIE_ADJUSTMENTS.find(adj => adj.value === calorieAdjustment)?.goal || 'maintenance',
         vegetarian: selectedPreferences.includes('Vegetarian'),
         vegan: selectedPreferences.includes('Vegan'),
         duration_days: 7,

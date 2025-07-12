@@ -708,14 +708,78 @@ class MealPlanGenerator:
                     k: v for k, v in filtered_database['dairy'].items()
                     if 'milk' in k and k != 'whole_milk' and k != 'reduced_fat_milk' and k != 'skim_milk'
                 }
+
+        # Handle special diets from dietary_preferences
+        dietary_preferences = preferences.get('dietary_preferences', [])
+        
+        # Handle Keto diet
+        if 'Keto' in dietary_preferences:
+            # Remove high-carb foods
+            if 'carbs' in filtered_database:
+                filtered_database['carbs'] = {
+                    k: v for k, v in filtered_database['carbs'].items()
+                    if v['carbs'] <= 10  # Only keep very low carb options
+                }
+            # Keep high-fat foods
+            if 'fats' in filtered_database:
+                filtered_database['fats'] = {
+                    k: v for k, v in filtered_database['fats'].items()
+                    if v['fat'] >= 5  # Focus on fatty foods
+                }
+            # Keep high-fat proteins
+            if 'proteins' in filtered_database:
+                filtered_database['proteins'] = {
+                    k: v for k, v in filtered_database['proteins'].items()
+                    if v['carbs'] <= 5  # Low carb proteins only
+                }
+            # Remove high-carb fruits
+            if 'fruits' in filtered_database:
+                filtered_database['fruits'] = {
+                    k: v for k, v in filtered_database['fruits'].items()
+                    if v['carbs'] <= 10  # Only berries and low-carb fruits
+                }
+
+        # Handle Low Carb diet
+        if 'Low Carb' in dietary_preferences:
+            if 'carbs' in filtered_database:
+                filtered_database['carbs'] = {
+                    k: v for k, v in filtered_database['carbs'].items()
+                    if v['carbs'] <= 20  # Only moderate-low carb options
+                }
+            # Keep moderate carb proteins
+            if 'proteins' in filtered_database:
+                filtered_database['proteins'] = {
+                    k: v for k, v in filtered_database['proteins'].items()
+                    if v['carbs'] <= 10  # Moderate-low carb proteins
+                }
+            # Limit high-carb fruits
+            if 'fruits' in filtered_database:
+                filtered_database['fruits'] = {
+                    k: v for k, v in filtered_database['fruits'].items()
+                    if v['carbs'] <= 15  # Lower carb fruits
+                }
         
         # Handle gluten-free preference
-        if 'Gluten-Free' in preferences.get('dietary_preferences', []):
+        if 'Gluten-Free' in dietary_preferences:
             if 'carbs' in filtered_database:
                 filtered_database['carbs'] = {
                     k: v for k, v in filtered_database['carbs'].items()
                     if k not in ['whole_wheat_bread', 'sourdough_bread', 'rye_bread', 'pasta',
                                'whole_wheat_pasta', 'udon_noodles', 'couscous']
+                }
+        
+        # Handle dairy-free preference
+        if 'Dairy-Free' in dietary_preferences:
+            if 'dairy' in filtered_database:
+                filtered_database['dairy'] = {
+                    k: v for k, v in filtered_database['dairy'].items()
+                    if k in ['almond_milk', 'soy_milk', 'oat_milk', 'cashew_milk', 'coconut_milk',
+                            'coconut_yogurt', 'almond_yogurt']
+                }
+            if 'proteins' in filtered_database:
+                filtered_database['proteins'] = {
+                    k: v for k, v in filtered_database['proteins'].items()
+                    if not any(x in k for x in ['milk', 'cheese', 'yogurt', 'whey', 'casein'])
                 }
         
         # Handle allergies
@@ -747,6 +811,20 @@ class MealPlanGenerator:
                         k: v for k, v in filtered_database['proteins'].items()
                         if k not in ['tofu', 'tempeh', 'edamame']
                     }
+        
+        # Adjust macro ratios for special diets
+        if 'Keto' in dietary_preferences:
+            self.macro_ratios = {
+                'weight_loss': {'protein': 0.35, 'carbs': 0.05, 'fat': 0.60},
+                'maintenance': {'protein': 0.30, 'carbs': 0.05, 'fat': 0.65},
+                'muscle_gain': {'protein': 0.35, 'carbs': 0.05, 'fat': 0.60}
+            }
+        elif 'Low Carb' in dietary_preferences:
+            self.macro_ratios = {
+                'weight_loss': {'protein': 0.40, 'carbs': 0.20, 'fat': 0.40},
+                'maintenance': {'protein': 0.35, 'carbs': 0.25, 'fat': 0.40},
+                'muscle_gain': {'protein': 0.40, 'carbs': 0.20, 'fat': 0.40}
+            }
         
         self.food_database = filtered_database
 
