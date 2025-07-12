@@ -21,6 +21,20 @@ instance.interceptors.request.use(
   }
 );
 
+let isRefreshing = false;
+let failedQueue: { resolve: (value?: unknown) => void; reject: (reason?: any) => void; }[] = [];
+
+const processQueue = (error: any | null, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Add a response interceptor to handle token refresh
 instance.interceptors.response.use(
   (response) => response,
@@ -29,17 +43,26 @@ instance.interceptors.response.use(
 
     // If the error is 401 and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If refresh is in progress, queue this request
+        try {
+          const token = await new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          });
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return instance(originalRequest);
+        } catch (err) {
+          return Promise.reject(err);
+        }
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         const refreshToken = localStorage.getItem('refresh_token');
         if (!refreshToken) {
-          // No refresh token available, clear everything and redirect to login
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          delete instance.defaults.headers.common['Authorization'];
-          window.location.href = '/login';
-          return Promise.reject(error);
+          throw new Error('No refresh token available');
         }
 
         const response = await instance.post('/auth/refresh/', {
@@ -53,18 +76,22 @@ instance.interceptors.response.use(
         instance.defaults.headers.common['Authorization'] = `Bearer ${access}`;
         originalRequest.headers.Authorization = `Bearer ${access}`;
 
+        processQueue(null, access);
         return instance(originalRequest);
       } catch (err) {
-        // If refresh token fails, log out the user
+        processQueue(err, null);
+        // Clear tokens and redirect to login
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         delete instance.defaults.headers.common['Authorization'];
         
-        // Only redirect to login if we're not already there
-        if (!window.location.pathname.includes('/login')) {
+        // Only redirect to login if we're not already there and not making a login request
+        if (!window.location.pathname.includes('/login') && !originalRequest.url?.includes('/auth/login/')) {
           window.location.href = '/login';
         }
         return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
       }
     }
 

@@ -262,19 +262,6 @@ const ProfilePage: React.FC = () => {
                       Account Settings
                     </button>
                   </li>
-                  <li>
-                    <button
-                      className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                        activeSection === 'notifications'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                      onClick={() => setActiveSection('notifications')}
-                    >
-                      <Bell className="mr-3 h-5 w-5" />
-                      Notifications
-                    </button>
-                  </li>
                 </ul>
               </nav>
             </div>
