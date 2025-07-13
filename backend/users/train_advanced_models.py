@@ -10,6 +10,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.metrics import MeanSquaredError as MSE
 import joblib
 import warnings
 warnings.filterwarnings('ignore')
@@ -170,10 +172,14 @@ def create_deep_learning_models():
         layers.Dense(1, activation='linear')
     ])
     
+    # Create loss and metric objects
+    mse_loss = MeanSquaredError()
+    mse_metric = MSE()
+    
     calorie_model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),
-        loss='mse',
-        metrics=['mae']
+        loss=mse_loss,
+        metrics=[mse_metric]
     )
     
     # Train with callbacks
@@ -217,8 +223,8 @@ def create_deep_learning_models():
     
     macro_model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),
-        loss='mse',
-        metrics=['mae']
+        loss=mse_loss,
+        metrics=[mse_metric]
     )
     
     macro_model.fit(
@@ -233,7 +239,7 @@ def create_deep_learning_models():
     # Model 3: Meal Composition Prediction
     print("Training meal composition model...")
     
-    # Generate meal composition data
+    # Generate meal data
     meal_types = ['breakfast', 'lunch', 'dinner', 'snack']
     meal_data = []
     
@@ -283,8 +289,8 @@ def create_deep_learning_models():
     
     meal_composition_model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=0.001),
-        loss='mse',
-        metrics=['mae']
+        loss=mse_loss,
+        metrics=[mse_metric]
     )
     
     meal_composition_model.fit(

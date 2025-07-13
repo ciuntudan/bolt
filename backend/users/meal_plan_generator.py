@@ -16,7 +16,7 @@ class MealPlanGenerator:
         self.meal_composition_model = None
         self.scaler = None
         
-        # Deep learning models
+        # Deep learning models (as fallback)
         self.deep_calorie_model = None
         self.deep_macro_model = None
         self.deep_meal_composition_model = None
@@ -26,28 +26,28 @@ class MealPlanGenerator:
         try:
             model_dir = os.path.join(os.path.dirname(__file__), 'models')
             
-            # Try to load deep learning models first (preferred)
+            # Try to load traditional ML models first (preferred)
             try:
-                import tensorflow as tf
-                self.deep_calorie_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_calorie_model.h5'))
-                self.deep_macro_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_macro_model.h5'))
-                self.deep_meal_composition_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_meal_composition_model.h5'))
-                self.deep_scaler = joblib.load(os.path.join(model_dir, 'deep_scaler.joblib'))
-                print("Successfully loaded deep learning models!")
-            except Exception as deep_e:
-                print(f"Deep learning models not available: {str(deep_e)}")
-                
-                # Fallback to traditional ML models
-                try:
-                    self.scaler = joblib.load(os.path.join(model_dir, 'feature_scaler.joblib'))
-                except:
-                    self.scaler = joblib.load(os.path.join(model_dir, 'scaler.joblib'))
-                
+                self.scaler = joblib.load(os.path.join(model_dir, 'feature_scaler.joblib'))
                 self.calorie_model = joblib.load(os.path.join(model_dir, 'calorie_model.joblib'))
                 self.macro_model = joblib.load(os.path.join(model_dir, 'macro_model.joblib'))
                 self.meal_timing_model = joblib.load(os.path.join(model_dir, 'meal_timing_model.joblib'))
                 self.meal_composition_model = joblib.load(os.path.join(model_dir, 'meal_composition_model.joblib'))
                 print("Successfully loaded traditional ML models")
+            except Exception as ml_e:
+                print(f"Traditional ML models not available: {str(ml_e)}")
+                
+                # Fallback to deep learning models
+                try:
+                    import tensorflow as tf
+                    self.deep_calorie_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_calorie_model.h5'))
+                    self.deep_macro_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_macro_model.h5'))
+                    self.deep_meal_composition_model = tf.keras.models.load_model(os.path.join(model_dir, 'deep_meal_composition_model.h5'))
+                    self.deep_scaler = joblib.load(os.path.join(model_dir, 'deep_scaler.joblib'))
+                    print("Successfully loaded deep learning models as fallback!")
+                except Exception as deep_e:
+                    print(f"Deep learning models not available: {str(deep_e)}")
+                    print("Falling back to rule-based calculations")
         except Exception as e:
             print(f"Warning: Could not load any ML models - {str(e)}")
             print("Falling back to rule-based calculations")
@@ -508,7 +508,7 @@ class MealPlanGenerator:
         return features
 
     def predict_calories(self, user_data: Dict[str, Any]) -> float:
-        """Predict daily calorie needs using deep learning, ML model or traditional method"""
+        """Predict daily calorie needs using ML model, deep learning, or traditional method"""
         # Validate required user data
         required_fields = ['weight', 'height', 'age', 'gender', 'activity_level']
         for field in required_fields:
@@ -519,30 +519,81 @@ class MealPlanGenerator:
         if (user_data['weight'] == 70.0 and user_data['height'] == 170.0 and user_data['age'] == 18):
             print("WARNING: User appears to be using default profile values. Meal plan calories may not be accurate.")
         
-        # Try deep learning model first
-        if self.deep_calorie_model is not None and self.deep_scaler is not None:
+        # Get base goal and calorie adjustment
+        base_goal = user_data.get('goal', 'maintenance').lower()
+        calorie_adjustment = user_data.get('calorie_adjustment', 0)
+        
+        # Try traditional ML model first (preferred)
+        if self.calorie_model is not None and self.scaler is not None:
+            # Use traditional ML model for prediction
+            features = self.preprocess_user_data(user_data)
+            predicted_calories = self.calorie_model.predict(features)[0]
+            
+            # Apply more granular goal adjustments
+            if base_goal == 'weight_loss':
+                if calorie_adjustment == -500:  # Aggressive
+                    goal_adjustment = -500
+                elif calorie_adjustment == -300:  # Moderate
+                    goal_adjustment = -300
+                elif calorie_adjustment == -100:  # Slow
+                    goal_adjustment = -100
+                else:
+                    goal_adjustment = -300  # Default to moderate
+            elif base_goal == 'maintenance':
+                goal_adjustment = 0
+            elif base_goal == 'muscle_gain':
+                if calorie_adjustment == 600:  # Aggressive
+                    goal_adjustment = 600
+                elif calorie_adjustment == 400:  # Moderate
+                    goal_adjustment = 400
+                elif calorie_adjustment == 200:  # Lean
+                    goal_adjustment = 200
+                else:
+                    goal_adjustment = 300  # Default
+            else:
+                goal_adjustment = 0
+            
+            predicted_calories += goal_adjustment
+            print(f"ML Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={base_goal} (adjustment: {goal_adjustment})")
+            return max(1200, predicted_calories)  # Ensure minimum safe calorie intake
+        
+        # Fallback to deep learning model
+        elif self.deep_calorie_model is not None and self.deep_scaler is not None:
             # Prepare features for deep learning model
             features = self.prepare_deep_features(user_data)
             features_scaled = self.deep_scaler.transform(features.reshape(1, -1))
             
             # Predict using deep learning model
             predicted_calories = float(self.deep_calorie_model.predict(features_scaled, verbose=0)[0][0])
-            print(f"Deep Learning Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={user_data.get('goal', 'maintenance')}")
+            
+            # Apply the same granular goal adjustments
+            if base_goal == 'weight_loss':
+                if calorie_adjustment == -500:  # Aggressive
+                    goal_adjustment = -500
+                elif calorie_adjustment == -300:  # Moderate
+                    goal_adjustment = -300
+                elif calorie_adjustment == -100:  # Slow
+                    goal_adjustment = -100
+                else:
+                    goal_adjustment = -300  # Default to moderate
+            elif base_goal == 'maintenance':
+                goal_adjustment = 0
+            elif base_goal == 'muscle_gain':
+                if calorie_adjustment == 600:  # Aggressive
+                    goal_adjustment = 600
+                elif calorie_adjustment == 400:  # Moderate
+                    goal_adjustment = 400
+                elif calorie_adjustment == 200:  # Lean
+                    goal_adjustment = 200
+                else:
+                    goal_adjustment = 300  # Default
+            else:
+                goal_adjustment = 0
+            
+            predicted_calories += goal_adjustment
+            print(f"Deep Learning Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={base_goal} (adjustment: {goal_adjustment})")
             return max(1200, predicted_calories)  # Ensure minimum safe calorie intake
         
-        elif self.calorie_model is not None:
-            # Use traditional ML model for prediction
-            features = self.preprocess_user_data(user_data)
-            predicted_calories = self.calorie_model.predict(features)[0]
-            # Add goal-based adjustment
-            goal_adjustments = {
-                'weight_loss': -500,
-                'maintenance': 0,
-                'muscle_gain': 500
-            }
-            predicted_calories += goal_adjustments.get(user_data.get('goal', 'maintenance').lower(), 0)
-            print(f"ML Model predicted calories: {predicted_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, goal={user_data.get('goal', 'maintenance')}")
-            return max(1200, predicted_calories)  # Ensure minimum safe calorie intake
         else:
             # Fallback to traditional TDEE calculation
             tdee_calories = self.calculate_tdee(
@@ -553,14 +604,32 @@ class MealPlanGenerator:
                 user_data['activity_level']
             )
             
-            # Apply goal-based adjustments
-            goal_adjustments = {
-                'weight_loss': -500,
-                'maintenance': 0,
-                'muscle_gain': 500
-            }
-            final_calories = tdee_calories + goal_adjustments.get(user_data.get('goal', 'maintenance').lower(), 0)
-            print(f"TDEE calculated calories: {final_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, activity={user_data['activity_level']}, goal={user_data.get('goal', 'maintenance')}")
+            # Apply the same granular goal adjustments
+            if base_goal == 'weight_loss':
+                if calorie_adjustment == -500:  # Aggressive
+                    goal_adjustment = -500
+                elif calorie_adjustment == -300:  # Moderate
+                    goal_adjustment = -300
+                elif calorie_adjustment == -100:  # Slow
+                    goal_adjustment = -100
+                else:
+                    goal_adjustment = -300  # Default to moderate
+            elif base_goal == 'maintenance':
+                goal_adjustment = 0
+            elif base_goal == 'muscle_gain':
+                if calorie_adjustment == 600:  # Aggressive
+                    goal_adjustment = 600
+                elif calorie_adjustment == 400:  # Moderate
+                    goal_adjustment = 400
+                elif calorie_adjustment == 200:  # Lean
+                    goal_adjustment = 200
+                else:
+                    goal_adjustment = 300  # Default
+            else:
+                goal_adjustment = 0
+            
+            final_calories = tdee_calories + goal_adjustment
+            print(f"TDEE calculated calories: {final_calories:.0f} for user: weight={user_data['weight']}kg, height={user_data['height']}cm, age={user_data['age']}, activity={user_data['activity_level']}, goal={base_goal} (adjustment: {goal_adjustment})")
             return max(1200, final_calories)  # Ensure minimum safe calorie intake
 
     def predict_macros(self, calories: float, user_data: Dict[str, Any]) -> Dict[str, float]:

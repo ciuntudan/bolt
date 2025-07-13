@@ -143,9 +143,17 @@ def generate_calorie_targets(X):
         activity_multipliers = [1.2, 1.375, 1.55, 1.725, 1.9]  
         tdee = bmr * activity_multipliers[activity_level_idx]
         
-        # Apply goal adjustment
-        goal_adjustments = [-500, 0, 300]  
-        base_calories[i] = tdee + goal_adjustments[goal_idx]
+        # Apply goal adjustment with more granular options
+        if goal_idx == 0:  # weight_loss
+            # Randomly choose between aggressive (-500), moderate (-300), and slow (-100)
+            goal_adjustment = np.random.choice([-500, -300, -100])
+        elif goal_idx == 1:  # maintenance
+            goal_adjustment = 0
+        else:  # muscle_gain
+            # Randomly choose between aggressive (+600), moderate (+400), and lean (+200)
+            goal_adjustment = np.random.choice([600, 400, 200])
+        
+        base_calories[i] = tdee + goal_adjustment
     
     return base_calories
 

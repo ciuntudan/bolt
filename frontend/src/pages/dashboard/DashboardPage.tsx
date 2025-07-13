@@ -520,25 +520,6 @@ const DashboardPage: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Weekly Workouts</span>
-                      <span className="text-sm font-medium text-blue-600">
-                        {data.training_stats.weekly_workouts_completed}/
-                        {data.training_stats.weekly_workouts_total} completed
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ 
-                          width: `${Math.round((data.training_stats.weekly_workouts_completed / 
-                            data.training_stats.weekly_workouts_total) * 100)}%` 
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Volume Progress</span>
                       <span className="text-sm font-medium text-green-600">
                         {data.training_stats.volume_progress_percentage}% completed
@@ -564,20 +545,6 @@ const DashboardPage: React.FC = () => {
                         className="bg-purple-600 h-2.5 rounded-full" 
                         style={{ width: `${data.training_stats.program_adherence_percentage}%` }}
                       ></div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-500">Current streak</p>
-                        <p className="font-medium text-gray-900">
-                          {data.training_stats.current_streak} days
-                        </p>
-                      </div>
-                      <div className="p-2 bg-blue-50 rounded-full">
-                        <Activity className="h-5 w-5 text-blue-600" />
-                      </div>
                     </div>
                   </div>
                 </div>

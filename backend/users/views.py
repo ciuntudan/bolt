@@ -1104,6 +1104,10 @@ def generate_meal_plan(request):
         if profile.weight == 70.0 and profile.height == 170.0 and profile.age == 18:
             logger.warning("User appears to be using default profile values. Meal plan may not be accurate.")
         
+        # Get calorie adjustment from request
+        calorie_adjustment = request.data.get('calorie_adjustment', 0)
+        logger.info(f"Calorie adjustment from request: {calorie_adjustment}")
+        
         # Prepare user data for meal plan generation with enhanced data collection
         user_data = {
             'weight': current_weight,
@@ -1112,6 +1116,7 @@ def generate_meal_plan(request):
             'gender': profile.gender,
             'activity_level': request.data.get('activity_level', 'moderate'),
             'goal': request.data.get('goal', 'maintenance'),
+            'calorie_adjustment': calorie_adjustment,  # Add calorie adjustment to user data
             'vegetarian': request.data.get('vegetarian', False),
             'vegan': request.data.get('vegan', False),
             'dietary_preferences': request.data.get('dietary_preferences', []),
@@ -1219,7 +1224,8 @@ def generate_meal_plan(request):
             'username': request.user.username,
             'plan_id': db_meal_plan.id,
             'created_at': db_meal_plan.created_at.isoformat(),
-            'is_active': db_meal_plan.is_active
+            'is_active': db_meal_plan.is_active,
+            'calorie_adjustment': calorie_adjustment  # Add calorie adjustment to debug info
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)

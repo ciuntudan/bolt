@@ -485,6 +485,9 @@ const MealPlanPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // Get the selected adjustment option
+      const selectedAdjustment = CALORIE_ADJUSTMENTS.find(adj => adj.value === calorieAdjustment);
+      
       // Use profile data for meal plan generation
       const response = await axios.post('/meal-plans/generate/', {
         weight: profileData?.weight || 70, // default values as fallback
@@ -492,7 +495,8 @@ const MealPlanPage: React.FC = () => {
         age: profileData?.age || 25,
         gender: profileData?.gender || 'male',
         activity_level: activityLevel,
-        goal: CALORIE_ADJUSTMENTS.find(adj => adj.value === calorieAdjustment)?.goal || 'maintenance',
+        goal: selectedAdjustment?.goal || 'maintenance',
+        calorie_adjustment: selectedAdjustment?.value || 0, // Send the exact adjustment value
         vegetarian: selectedPreferences.includes('Vegetarian'),
         vegan: selectedPreferences.includes('Vegan'),
         duration_days: 7,
@@ -520,14 +524,9 @@ const MealPlanPage: React.FC = () => {
       }
       
       setShowFilters(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error generating meal plan:', err);
-      setError(
-        err.response?.data?.error || 
-        err.response?.data?.detail || 
-        err.message || 
-        'Failed to generate meal plan. Please try again.'
-      );
+      setError('Failed to generate meal plan. Please try again.');
     } finally {
       setLoading(false);
     }
