@@ -416,7 +416,7 @@ const TrainingPlanPage: React.FC = () => {
                   <label key={value} className="flex items-center">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      className="!w-4 !h-4 !rounded !border-gray-300 !bg-white checked:!bg-blue-600 checked:!border-blue-600 !text-blue-600 focus:!ring-blue-500 focus:!ring-2 focus:!ring-offset-2"
                       checked={planPreferences.equipment_available.includes(value)}
                       onChange={(e) => {
                         const newEquipment = e.target.checked
@@ -445,7 +445,7 @@ const TrainingPlanPage: React.FC = () => {
                   <label key={value} className="flex items-center">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      className="!w-4 !h-4 !rounded !border-gray-300 !bg-white checked:!bg-blue-600 checked:!border-blue-600 !text-blue-600 focus:!ring-blue-500 focus:!ring-2 focus:!ring-offset-2"
                       checked={planPreferences.injuries_limitations.includes(value)}
                       onChange={(e) => {
                         const newLimitations = e.target.checked
@@ -477,7 +477,7 @@ const TrainingPlanPage: React.FC = () => {
                       <label key={value} className="flex items-center">
                         <input
                           type="checkbox"
-                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                          className="!w-4 !h-4 !rounded !border-gray-300 !bg-white checked:!bg-blue-600 checked:!border-blue-600 !text-blue-600 focus:!ring-blue-500 focus:!ring-2 focus:!ring-offset-2"
                           checked={planPreferences.cardio_preferences.type.includes(value)}
                           onChange={(e) => {
                             const newTypes = e.target.checked
@@ -545,7 +545,7 @@ const TrainingPlanPage: React.FC = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  className="!w-4 !h-4 !rounded !border-gray-300 !bg-white checked:!bg-blue-600 checked:!border-blue-600 !text-blue-600 focus:!ring-blue-500 focus:!ring-2 focus:!ring-offset-2"
                   checked={planPreferences.include_deload_weeks}
                   onChange={(e) => setPlanPreferences({...planPreferences, include_deload_weeks: e.target.checked})}
                 />

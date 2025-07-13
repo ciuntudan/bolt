@@ -30,9 +30,10 @@ interface WorkoutTemplate {
 
 const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | undefined, strengthMetrics: DashboardData['strength_metrics'] | null | undefined, currentWeight: number) => {
   const data = [];
-  const lastSevenDays = Array.from({ length: 7 }, (_, i) => {
+  // Get last 30 days instead of 7
+  const lastThirtyDays = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
+    date.setDate(date.getDate() - (29 - i)); // 29 to include today
     return date.toISOString().split('T')[0];
   });
 
@@ -42,19 +43,55 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
     sortedBodyMetrics = [...bodyMetrics].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
-  for (const date of lastSevenDays) {
+  // Find the closest weight to the start date
+  let startWeight = currentWeight;
+  if (sortedBodyMetrics.length > 0) {
+    const startDate = lastThirtyDays[0];
+    // Find the weight entry closest to the start date
+    const closestEntry = sortedBodyMetrics.reduce((prev, curr) => {
+      const prevDiff = Math.abs(new Date(prev.date).getTime() - new Date(startDate).getTime());
+      const currDiff = Math.abs(new Date(curr.date).getTime() - new Date(startDate).getTime());
+      return prevDiff < currDiff ? prev : curr;
+    });
+    startWeight = closestEntry.weight;
+  }
+
+  // Calculate min and max weights for better interval calculation
+  let minWeight = startWeight;
+  let maxWeight = startWeight;
+  if (sortedBodyMetrics.length > 0) {
+    minWeight = Math.min(...sortedBodyMetrics.map(m => m.weight));
+    maxWeight = Math.max(...sortedBodyMetrics.map(m => m.weight));
+  }
+
+  // Calculate a reasonable buffer (about 5% of the weight range)
+  const weightRange = maxWeight - minWeight;
+  const buffer = Math.max(2, weightRange * 0.05);
+  minWeight = Math.floor(minWeight - buffer);
+  maxWeight = Math.ceil(maxWeight + buffer);
+
+  for (const date of lastThirtyDays) {
     // Find the closest previous weight entry (on or before this date)
-    let weightForDay = currentWeight;
+    let weightForDay = startWeight; // Default to startWeight instead of currentWeight
     if (sortedBodyMetrics.length > 0) {
       // Find all entries on or before this date
       const previousEntries = sortedBodyMetrics.filter(m => m.date <= date);
       if (previousEntries.length > 0) {
         weightForDay = previousEntries[previousEntries.length - 1].weight;
+      } else {
+        // If no previous entries, use the closest future entry if available
+        const futureEntries = sortedBodyMetrics.filter(m => m.date > date);
+        if (futureEntries.length > 0) {
+          weightForDay = futureEntries[0].weight;
+        }
       }
     }
 
     const dayData = {
-      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+      name: new Date(date).toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric'
+      }),
       weight: weightForDay,
       strength: 0,
     };
@@ -69,7 +106,11 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
     data.push(dayData);
   }
 
-  return data;
+  return {
+    data,
+    minWeight,
+    maxWeight
+  };
 };
 
 const formatNutritionData = (nutritionMetrics: DashboardData['nutrition_metrics'] | null | undefined) => {
@@ -352,6 +393,7 @@ const DashboardPage: React.FC = () => {
             <div className="bg-white shadow rounded-lg p-6">
               <div className="mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Your Progress</h2>
+                <p className="text-sm text-gray-500">Last 30 days</p>
               </div>
               
               {loading ? (
@@ -366,13 +408,35 @@ const DashboardPage: React.FC = () => {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                      data={formatProgressData(data.body_metrics, data.strength_metrics, auth?.user?.profile?.weight || 0)}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      data={formatProgressData(data.body_metrics, data.strength_metrics, auth?.user?.profile?.weight || 0).data}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis yAxisId="left" orientation="left" stroke="#3B82F6" />
-                      <YAxis yAxisId="right" orientation="right" stroke="#10B981" />
+                      <XAxis 
+                        dataKey="name"
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={2}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis 
+                        yAxisId="left" 
+                        orientation="left" 
+                        stroke="#3B82F6"
+                        domain={[
+                          (dataMin: number) => Math.floor(dataMin - 2),
+                          (dataMax: number) => Math.ceil(dataMax + 2)
+                        ]}
+                        tickCount={5}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right" 
+                        stroke="#10B981"
+                        tick={{ fontSize: 12 }}
+                      />
                       <Tooltip />
                       <Legend />
                       <Area
