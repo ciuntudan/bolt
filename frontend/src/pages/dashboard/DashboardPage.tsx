@@ -269,8 +269,8 @@ const DashboardPage: React.FC = () => {
         </div>
         
         {/* Stats overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Stats overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Current Weight */}
           <motion.div 
             whileHover={{ y: -5 }}
             className="bg-white rounded-lg shadow p-6"
@@ -296,29 +296,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </motion.div>
           
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-white rounded-lg shadow p-6"
-          >
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
-                <Dumbbell size={24} />
-              </div>
-              <div className="ml-4">
-                <h2 className="text-sm font-medium text-gray-500">Strength Increase</h2>
-                <div className="flex items-center">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {data?.strength_increase?.toFixed(1) || '0.0'}%
-                  </p>
-                  <span className="flex items-center ml-2 text-green-500 text-sm">
-                    <ArrowUp size={16} />
-                    30d
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-          
+          {/* Workout Consistency */}
           <motion.div 
             whileHover={{ y: -5 }}
             className="bg-white rounded-lg shadow p-6"
@@ -341,6 +319,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </motion.div>
           
+          {/* Recent Achievements */}
           <motion.div 
             whileHover={{ y: -5 }}
             className="bg-white rounded-lg shadow p-6"
