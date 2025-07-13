@@ -70,20 +70,19 @@ const formatProgressData = (bodyMetrics: DashboardData['body_metrics'] | null | 
   minWeight = Math.floor(minWeight - buffer);
   maxWeight = Math.ceil(maxWeight + buffer);
 
+  // Keep track of the most recent weight we've seen
+  let mostRecentWeight = startWeight;
+
   for (const date of lastThirtyDays) {
     // Find the closest previous weight entry (on or before this date)
-    let weightForDay = startWeight; // Default to startWeight instead of currentWeight
+    let weightForDay = mostRecentWeight; // Default to most recent weight instead of startWeight
+    
     if (sortedBodyMetrics.length > 0) {
       // Find all entries on or before this date
       const previousEntries = sortedBodyMetrics.filter(m => m.date <= date);
       if (previousEntries.length > 0) {
         weightForDay = previousEntries[previousEntries.length - 1].weight;
-      } else {
-        // If no previous entries, use the closest future entry if available
-        const futureEntries = sortedBodyMetrics.filter(m => m.date > date);
-        if (futureEntries.length > 0) {
-          weightForDay = futureEntries[0].weight;
-        }
+        mostRecentWeight = weightForDay; // Update most recent weight
       }
     }
 
@@ -555,47 +554,62 @@ const DashboardPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-medium text-gray-900">Recent Achievements</h2>
-                <Link to="/achievements" className="text-sm text-blue-600 hover:text-blue-500 flex items-center">
+                <Link to="/training-plan" className="text-sm text-blue-600 hover:text-blue-500 flex items-center">
                   View all <ChevronRight size={16} />
                 </Link>
               </div>
               
-              <div className="space-y-4">
-                {data?.recent_achievements.map((achievement) => (
-                  <div key={achievement.id} className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <div className={`p-2 rounded-full ${
-                        achievement.type === 'gold' 
-                          ? 'bg-yellow-100' 
-                          : achievement.type === 'silver'
-                          ? 'bg-gray-100'
-                          : 'bg-orange-100'
-                      }`}>
-                        <Award className={`h-6 w-6 ${
-                          achievement.type === 'gold'
-                            ? 'text-yellow-600'
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+              ) : error ? (
+                <div className="text-center text-red-600 py-8">
+                  {error}
+                </div>
+              ) : data?.recent_achievements && data.recent_achievements.length > 0 ? (
+                <div className="space-y-4">
+                  {data.recent_achievements.map((achievement) => (
+                    <div key={achievement.id} className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className={`p-2 rounded-full ${
+                          achievement.type === 'gold' 
+                            ? 'bg-yellow-100' 
                             : achievement.type === 'silver'
-                            ? 'text-gray-600'
-                            : 'text-orange-600'
-                        }`} />
+                            ? 'bg-gray-100'
+                            : 'bg-orange-100'
+                        }`}>
+                          <Award className={`h-6 w-6 ${
+                            achievement.type === 'gold'
+                              ? 'text-yellow-600'
+                              : achievement.type === 'silver'
+                              ? 'text-gray-600'
+                              : 'text-orange-600'
+                          }`} />
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-gray-900">{achievement.title}</h3>
+                        <p className="text-xs text-gray-500">{achievement.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(achievement.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </p>
                       </div>
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-gray-900">{achievement.title}</h3>
-                      <p className="text-xs text-gray-500">{achievement.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(achievement.date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                
-                {(!data?.recent_achievements || data.recent_achievements.length === 0) && (
-                  <p className="text-sm text-gray-500 text-center py-4">
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Award className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">
                     Complete workouts to earn achievements!
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Weight Logs */}
